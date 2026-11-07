@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<form method="post" action="/admin/settings" class="panel">
+  <h1>Settings</h1>
+  {% if msg %}<p class="ok">{{ msg }}</p>{% endif %}
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <label>USD per 10,000 credits <input name="rate_usd_per_10k" type="number" step="any" min="0.0001" value="{{ s.rate_usd_per_10k }}" required></label>
+  <label>Est. tokens per word <input name="tokens_per_word" type="number" step="any" min="0.01" value="{{ s.tokens_per_word }}" required></label>
+  <label>Daily sync after (UTC hour, 0-23) <input name="sync_hour_utc" type="number" min="0" max="23" value="{{ s.sync_hour_utc }}" required></label>
+  <label>Excerpt model (Abacus.AI LLM name) <input name="brief_llm" value="{{ s.brief_llm }}" required></label>
+  <label>Extra words to remove from excerpts (one per line: names, usernames, hostnames, company names)
+    <textarea name="redact_terms" rows="8">{{ s.redact_terms }}</textarea></label>
+  <label class="check"><input type="checkbox" name="rebrief" value="1"> Rewrite all excerpts on the next sync (uses a few credits)</label>
+  <button class="btn">Save</button>
+</form>
+{% endblock %}

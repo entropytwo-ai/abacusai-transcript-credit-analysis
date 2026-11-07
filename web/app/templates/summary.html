@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Summary{% endblock %}
+{% block content %}
+{% include "_syncbar.html" %}
+<h1>Credit usage by project</h1>
+<div class="cards">
+  <div class="card"><div class="k">Total credits</div><div class="v">{{ total.credits | n0 }}</div></div>
+  <div class="card"><div class="k">USD value</div><div class="v">{{ total.usd | money }}</div></div>
+  <div class="card"><div class="k">Projects / chats / turns</div><div class="v">{{ total.files }} / {{ total.chats }} / {{ total.turns }}</div></div>
+  <div class="card"><div class="k">Agent run time</div><div class="v">{{ (total.runtime_secs / 3600) | n2 }} h</div></div>
+</div>
+<p class="actions"><a class="btn" href="/export/summary.csv?sort={{ sort }}">Download CSV</a> <a class="btn" href="/export/summary.pdf?sort={{ sort }}">Download PDF</a> <a class="btn" href="/export/dive.csv">Download dive CSV</a> <a class="btn" href="/export/dive.pdf?sort={{ sort }}">Download dive PDF</a>
+<span class="muted">Click a column heading to sort.</span></p>
+<div class="scroll"><table class="grid sortable" id="summary">
+  <thead><tr>
+    <th data-type="text">Project</th><th data-type="text">Created</th><th data-type="text">Last activity</th>
+    <th class="num" data-type="num">Chats</th><th class="num" data-type="num">Turns</th>
+    <th class="num" data-type="num">Text Size</th><th class="num" data-type="num">Words</th><th class="num" data-type="num">Est. Tokens</th>
+    <th class="num" data-type="num">Total Credits</th><th class="num" data-type="num">USD Value</th>
+  </tr>
+  <tr class="total-row">
+    <td>TOTAL</td><td></td><td></td><td class="num">{{ total.chats }}</td><td class="num">{{ total.turns }}</td>
+    <td class="num">{{ total.size_h }}</td><td class="num">{{ total.words | n0 }}</td><td class="num">{{ total.tokens | n0 }}</td>
+    <td class="num">{{ total.credits | n0 }}</td><td class="num">{{ total.usd | money }}</td>
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td><a href="/project/{{ r.slug }}">{{ r.name }}</a></td>
+    <td data-v="{{ r.created or '' }}">{{ r.created_date }}</td>
+    <td data-v="{{ r.last_activity or '' }}">{{ r.last_date }}</td>
+    <td class="num">{{ r.chats }}</td><td class="num">{{ r.turns }}</td>
+    <td class="num" data-v="{{ r.text_bytes }}">{{ r.size_h }}</td>
+    <td class="num" data-v="{{ r.words }}">{{ r.words | n0 }}</td>
+    <td class="num" data-v="{{ r.tokens }}">{{ r.tokens | n0 }}</td>
+    <td class="num" data-v="{{ r.credits }}">{{ r.credits_i | n0 }}</td>
+    <td class="num" data-v="{{ r.usd }}">{{ r.usd | money }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="10" class="muted">No data yet. {% if user.role == 'owner' %}Press <b>Sync now</b>.{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% include "_stats.html" %}
+{% if daily %}
+<h2>Credits per day (UTC)</h2>
+<div class="chart" role="img" aria-label="Credits per day">
+  {% for d in daily %}
+  <div class="bar" title="{{ d.day }}: {{ d.credits | n0 }} credits"><span style="height: calc((100% - 40px) * {{ (d.credits / daily_max) if daily_max else 0 }})"></span><i>{{ d.day[5:] }}</i></div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
