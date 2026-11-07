@@ -1,0 +1,11 @@
+Build me a RAID pricing calculator that compares drive costs per terabyte
+raid_pricer.py
+Thought for 14s
+Credits: 12,500
+Add a CSV export option and fix the rounding errors in the totals
+raid_pricer.py
+Credits: 1,653
+Write a README with a clickable table of contents please
+README.md
+Credits: 502
+Credits: 345
