@@ -1,8 +1,10 @@
-Filename,FileSizeBytes,TopicSummary,Credits,USD
-"barcode-splitter: invoice-project-abacusai-transcript",186,"[screenshot.png] Create the exe file. Make sure it runs o...",1290,1.29
-"barcode-splitter: invoice-project-abacusai-transcript",186,"[barcode_split...] Virustotal had 3 security vendors flag...",4930,4.93
-"raid-pricer-project-abacusai-transcript",310,"[raid_pricer.py] Build me a RAID pricing calculator that ...",12500,12.50
-"raid-pricer-project-abacusai-transcript",310,"[raid_pricer.py] Add a CSV export option and fix the roun...",1653,1.65
-"raid-pricer-project-abacusai-transcript",310,"[README.md] Write a README with a clickable table of cont...",502,0.50
-"raid-pricer-project-abacusai-transcript",310,"(System Step)",345,0.35
-"xtree project-abacusai-transcript",90,"Recreate the classic XTree Gold file manager as a termina...",1234567,1234.57
+Filename,FileSizeBytes,TopicSummary,WordCount,EstTokens,Credits,USD
+"barcode-splitter: invoice-project-abacusai-transcript",186,"[screenshot.png] Create the exe file. Make sure it runs o...",14,19,1290,1.29
+"barcode-splitter: invoice-project-abacusai-transcript",186,"[barcode_split...] Virustotal had 3 security vendors flag...",12,16,4930,4.93
+"notes-without-credits",33,"(no Credits lines found)",6,8,0,0.00
+"raid-pricer-project-abacusai-transcript",310,"[raid_pricer.py] Build me a RAID pricing calculator that ...",16,21,12500,12.50
+"raid-pricer-project-abacusai-transcript",310,"[raid_pricer.py] Add a CSV export option and fix the roun...",14,19,1653,1.65
+"raid-pricer-project-abacusai-transcript",310,"[README.md] Write a README with a clickable table of cont...",11,15,502,0.50
+"raid-pricer-project-abacusai-transcript",310,"(System Step)",0,0,345,0.35
+"xtree project-abacusai-transcript",90,"Recreate the classic XTree Gold file manager as a termina...",11,15,1234567,1234.57
+"xtree project-abacusai-transcript",90,"(text after last Credits line)",1,1,0,0.00

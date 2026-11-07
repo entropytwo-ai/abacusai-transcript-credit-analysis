@@ -26,7 +26,7 @@ fi
 
 set -euo pipefail
 
-readonly VERSION="1.1.0"
+readonly VERSION="1.2.0"
 readonly PROG="credit-scanner"
 readonly REPO_URL="https://github.com/entropytwo-ai/abacusai-transcript-credit-analysis"
 # Set CREDIT_SCANNER_AWK to force a specific awk (gawk, mawk, "busybox awk", ...).
@@ -99,12 +99,12 @@ function credit_val(line,    v) {
 }
 BEGIN {
     qfn = fn; gsub(/"/, "\"\"", qfn)
-    mc = (cm == 1) ? 60 : ((wm == 1) ? 42 : 45)
+    mc = (cm == 1) ? 60 : 42
     lc = 0; bw = 0; tfw = 0; fc = 0
 }
 /Credits:[ \t]*~?[ \t]*[0-9]/ {
     v = credit_val($0)
-    fc += v
+    fc += v; nsteps++
     if (mode == "dive") {
         ctx = user_prompt()
         if (ctx == "") ctx = heuristic_ctx()
@@ -113,11 +113,9 @@ BEGIN {
         u = v * rate
         if (cm == 1) {
             gsub(/"/, "\"\"", ctx)
-            if (wm == 1) printf "\"%s\",%d,\"%s\",%d,%.0f,%.2f\n", qfn, szb, ctx, bw, v, u
-            else         printf "\"%s\",%d,\"%s\",%.0f,%.2f\n", qfn, szb, ctx, v, u
+            printf "\"%s\",%d,\"%s\",%.0f,%.0f,%.0f,%.2f\n", qfn, szb, ctx, bw, tk(bw), v, u
         } else {
-            if (wm == 1) printf "%s : %10d : %15s : $%10.2f\n", pad(ctx, 42), bw, cn(v, 0), u
-            else         printf "%s : %15s : $%10.2f\n", pad(ctx, 45), cn(v, 0), u
+            drow(ctx, bw, v, u)
         }
     }
     split("", b); lc = 0; bw = 0
@@ -133,14 +131,18 @@ BEGIN {
 }
 END {
     if (mode == "sum") {
-        printf "%.0f\t%d\t%.2f\t%s\t%s\n", fc, tfw, fc * rate, hs(szb), cn(fc, 0)
-    } else if (cm != 1) {
-        if (wm == 1) {
-            print "-------------------------------------------:------------:-----------------:-------------"
-            printf "%s%-42s : %10d : %15s : $%10.2f%s\n", B, "PROJECT TOTALS", tfw, cn(fc, 0), fc * rate, R
-        } else {
-            print "----------------------------------------------:-----------------:-------------"
-            printf "%s%-45s : %15s : $%10.2f%s\n", B, "PROJECT TOTALS", cn(fc, 0), fc * rate, R
+        printf "%.0f\t%.0f\t%.0f\t%.2f\t%s\t%s\t%s\t%s\n", fc, tfw, tk(tfw), fc * rate, hs(szb), cn(fc, 0), cn(tfw, 0), cn(tk(tfw), 0)
+    } else {
+        # words after the last "Credits:" line (or in a file without any) get their own row,
+        # so the Words column adds up to PROJECT TOTALS
+        if (bw > 0) {
+            ctx = (nsteps > 0) ? "(text after last Credits line)" : "(no Credits lines found)"
+            if (cm == 1) printf "\"%s\",%d,\"%s\",%.0f,%.0f,0,0.00\n", qfn, szb, ctx, bw, tk(bw)
+            else drow(ctx, bw, 0, 0)
+        }
+        if (cm != 1) {
+            print "-------------------------------------------:------------:-------------:-----------------:-------------"
+            printf "%s%-42s : %10s : %11s : %15s : $%10.2f%s\n", B, "PROJECT TOTALS", cn(tfw, 0), cn(tk(tfw), 0), cn(fc, 0), fc * rate, R
         }
     }
 }
@@ -149,6 +151,11 @@ END {
 # Shared awk helpers for dive-mode topic detection.
 # shellcheck disable=SC2016
 readonly AWK_TOPIC='
+# estimated tokens for a word count (tpw = tokens per word)
+function tk(w) { return int(w * tpw + 0.5) }
+function drow(ctx, w, v, u) {
+    printf "%s : %10s : %11s : %15s : $%10.2f\n", pad(ctx, 42), cn(w, 0), cn(tk(w), 0), cn(v, 0), u
+}
 function is_ts(s) { return s ~ /^[0-9][0-9]?:[0-9][0-9]([ \t]*[AaPp][Mm])?$/ }
 function is_agent(s) { return s ~ /^Abacus AI Agent$/ }
 # Byte-safe (LC_ALL=C) UTF-8 helpers: display width counts lead bytes only.
@@ -241,15 +248,18 @@ itself are skipped automatically (files named explicitly are always used).
 
 Options:
   -d, --dive           Per-transcript breakdown: one row per step/topic.
-  -w, --words          Add word counts (summary and dive).
   -c, --csv            Output CSV instead of tables.
   -s, --sort KEY       Sort order (default: filename). Keys:
                          filename | credits-desc | credits-asc |
-                         size | size-asc | date | date-desc
+                         size | size-asc | words | words-asc |
+                         date | date-desc
                        (aliases: name, credits = credits-desc)
   -n, --top N          Only list the first N transcripts after sorting
                        (totals and statistics still cover all files).
   -r, --rate USD       USD price per 10,000 credits (default: 10).
+  -t, --tokens-per-word N
+                       Ratio used for the Est. Tokens column (default: 1.33,
+                       i.e. about 0.75 words per token).
   -p, --pattern GLOB   Filename glob used when scanning directories
                        (default: '*'; e.g. '*-abacusai-transcript.txt').
   -D, --dir DIR        Directory to scan (same as a DIR argument).
@@ -259,7 +269,13 @@ Options:
   -V, --version        Print version and exit.
   -h, --help           Show this help and exit.
 
-Short flags can be combined and take attached values, e.g. -dw, -cs credits-desc, -n5.
+Short flags can be combined and take attached values, e.g. -dc, -cs credits-desc, -n5.
+
+Every table and CSV includes Words and Est. Tokens columns. Words are
+whitespace-separated words in the transcript text (Credits lines excluded);
+Est. Tokens = words x ratio, rounded. It is an estimate, not Abacus.AI's
+billed token count: it covers only the saved chat text, not the
+background agent work (programming, tool calls, testing) behind the credits.
 
 Examples:
   $PROG                                   # summary of current directory
@@ -327,7 +343,7 @@ check_deps() {
 # Main
 # ---------------------------------------------------------------------------
 main() {
-    local dive=0 words=0 csv=0 sort_by="filename" top=0 rate="10" pattern="*" color="auto"
+    local dive=0 csv=0 sort_by="filename" top=0 rate="10" tpw="1.33" pattern="*" color="auto"
     local -a targets=()
 
     while (($#)); do
@@ -336,7 +352,7 @@ main() {
             -V|--version) printf '%s %s\n' "$PROG" "$VERSION"; return 0 ;;
             --self-test)  self_test; return $? ;;
             -d|--dive)    dive=1 ;;
-            -w|--words)   words=1 ;;
+            -w|--words)   ;;   # word counts are always shown now; kept for compatibility
             -c|--csv)     csv=1 ;;
             -s|--sort)    [[ $# -ge 2 ]] || die "option '$1' needs a KEY"; sort_by=$2; shift ;;
             --sort=*)     sort_by=${1#*=} ;;
@@ -344,6 +360,8 @@ main() {
             --top=*)      top=${1#*=} ;;
             -r|--rate)    [[ $# -ge 2 ]] || die "option '$1' needs a USD amount"; rate=$2; shift ;;
             --rate=*)     rate=${1#*=} ;;
+            -t|--tokens-per-word) [[ $# -ge 2 ]] || die "option '$1' needs a ratio"; tpw=$2; shift ;;
+            --tokens-per-word=*)  tpw=${1#*=} ;;
             -p|--pattern) [[ $# -ge 2 ]] || die "option '$1' needs a GLOB"; pattern=$2; shift ;;
             --pattern=*)  pattern=${1#*=} ;;
             -D|--dir)     [[ $# -ge 2 ]] || die "option '$1' needs a DIR"; targets+=("$2"); shift ;;
@@ -358,7 +376,7 @@ main() {
                 for ((i = 0; i < ${#flags}; i++)); do
                     ch=${flags:i:1}
                     split_flags+=("-$ch")
-                    if [[ $ch == [snrpD] ]]; then
+                    if [[ $ch == [snrpDt] ]]; then
                         if ((i + 1 < ${#flags})); then split_flags+=("${flags:i+1}"); fi
                         break
                     fi
@@ -375,12 +393,15 @@ main() {
     case $sort_by in
         filename|name)       sort_by="filename" ;;
         credits-desc|credits) sort_by="credits-desc" ;;
-        credits-asc|size|size-asc|date|date-desc) ;;
-        *) die "invalid sort key '$sort_by' (use: filename, credits-desc, credits-asc, size, size-asc, date, date-desc)" ;;
+        credits-asc|size|size-asc|words|words-asc|date|date-desc) ;;
+        tokens) sort_by="words" ;;
+        tokens-asc) sort_by="words-asc" ;;
+        *) die "invalid sort key '$sort_by' (use: filename, credits-desc, credits-asc, size, size-asc, words, words-asc, date, date-desc)" ;;
     esac
     [[ $top =~ ^[0-9]+$ ]] || die "--top expects a non-negative whole number, got '$top'"
     top=$((10#$top))
     [[ $rate =~ ^[0-9]+([.][0-9]+)?$|^[.][0-9]+$ ]] || die "--rate expects a USD amount like 10 or 12.50, got '$rate'"
+    [[ $tpw =~ ^[0-9]+([.][0-9]+)?$|^[.][0-9]+$ ]] || die "--tokens-per-word expects a number like 1.33, got '$tpw'"
     case $color in auto|always|never) ;; *) die "--color expects auto, always or never" ;; esac
     [[ -n $pattern ]] || die "--pattern must not be empty"
 
@@ -444,21 +465,21 @@ main() {
     fi
 
     # ---- analyze -------------------------------------------------------------
-    local -a raw=() creds=()
-    local f base fn szb cred wcount usd szh fcred dk max_l=23 g_cred=0 g_bytes=0 g_words=0
+    local -a raw=() creds=() wcs=() tks=()
+    local f base fn szb cred wcount tkn usd szh fcred fw ft dk max_l=23 g_cred=0 g_bytes=0 g_words=0 g_tok=0
     for f in "${files[@]}"; do
         base=${f##*/}
         fn=${base%.*}
         [[ -n $fn ]] || fn=$base
         ((${#fn} > max_l)) && max_l=${#fn}
         szb=$(wc -c < "$f"); szb=${szb//[[:space:]]/}
-        IFS=$'\t' read -r cred wcount usd szh fcred < <(
-            run_awk -v mode=sum -v szb="$szb" -v rate="$per_credit" "$AWK_LIB$AWK_TOPIC$AWK_FILE" < "$f"
+        IFS=$'\t' read -r cred wcount tkn usd szh fcred fw ft < <(
+            run_awk -v mode=sum -v szb="$szb" -v rate="$per_credit" -v tpw="$tpw" "$AWK_LIB$AWK_TOPIC$AWK_FILE" < "$f"
         )
         dk=$(date_key "$fn" "$f")
-        g_cred=$((g_cred + cred)); g_bytes=$((g_bytes + szb)); g_words=$((g_words + wcount))
-        creds+=("$cred")
-        raw+=("${cred}${US}${dk}${US}${fn}${US}${fcred}${US}${usd}${US}${szb}${US}${szh}${US}${wcount}${US}${f}")
+        g_cred=$((g_cred + cred)); g_bytes=$((g_bytes + szb)); g_words=$((g_words + wcount)); g_tok=$((g_tok + tkn))
+        creds+=("$cred"); wcs+=("$wcount"); tks+=("$tkn")
+        raw+=("${cred}${US}${dk}${US}${fn}${US}${fcred}${US}${usd}${US}${szb}${US}${szh}${US}${wcount}${US}${tkn}${US}${fw}${US}${ft}${US}${f}")
     done
 
     local -a sort_args
@@ -468,6 +489,8 @@ main() {
         credits-asc)  sort_args=("-k1,1n" "-k3,3f") ;;
         size)         sort_args=("-k6,6nr" "-k3,3f") ;;
         size-asc)     sort_args=("-k6,6n" "-k3,3f") ;;
+        words)        sort_args=("-k8,8nr" "-k3,3f") ;;
+        words-asc)    sort_args=("-k8,8n" "-k3,3f") ;;
         date)         sort_args=("-k2,2n" "-k3,3f") ;;
         date-desc)    sort_args=("-k2,2nr" "-k3,3f") ;;
     esac
@@ -476,30 +499,24 @@ main() {
     local total_n=${#sorted[@]}
     if ((top > 0 && top < total_n)); then sorted=("${sorted[@]:0:top}"); fi
 
-    local item tot ftot fusd szbr szhr wc_r file
+    local item tot ftot fusd szbr szhr wc_r tk_r fw_r ft_r file
     # ---- dive mode -------------------------------------------------------------
     if [[ $dive -eq 1 ]]; then
         local heavy
         heavy=$(repeat "=" 104)
         if [[ $csv -eq 1 ]]; then
-            if [[ $words -eq 1 ]]; then echo "Filename,FileSizeBytes,TopicSummary,WordCount,Credits,USD"
-            else echo "Filename,FileSizeBytes,TopicSummary,Credits,USD"; fi
+            echo "Filename,FileSizeBytes,TopicSummary,WordCount,EstTokens,Credits,USD"
         fi
         for item in "${sorted[@]}"; do
-            IFS=$US read -r tot dk fn ftot fusd szbr szhr wc_r file <<< "$item"
+            IFS=$US read -r tot dk fn ftot fusd szbr szhr wc_r tk_r fw_r ft_r file <<< "$item"
             if [[ $csv -eq 0 ]]; then
                 echo "$heavy"
                 printf '%s DIVE-IN ANALYSIS: %s (%s)%s\n' "$B" "$fn" "$szhr" "$R"
                 echo "$heavy"
-                if [[ $words -eq 1 ]]; then
-                    printf "%-42s : %10s : %15s : %12s\n" "Topic Summary" "Word Count" "Credit Value" "USD Value"
-                    printf "%-42s-:-%10s-:-%15s-:-%12s\n" "$(repeat - 42)" "$(repeat - 10)" "$(repeat - 15)" "$(repeat - 12)"
-                else
-                    printf "%-45s : %15s : %12s\n" "Topic Summary" "Credit Value" "USD Value"
-                    printf "%-45s-:-%15s-:-%12s\n" "$(repeat - 45)" "$(repeat - 15)" "$(repeat - 12)"
-                fi
+                printf "%-42s : %10s : %11s : %15s : %12s\n" "Topic Summary" "Words" "Est. Tokens" "Credit Value" "USD Value"
+                printf "%-42s-:-%10s-:-%11s-:-%15s-:-%12s\n" "$(repeat - 42)" "$(repeat - 10)" "$(repeat - 11)" "$(repeat - 15)" "$(repeat - 12)"
             fi
-            run_awk -v mode=dive -v fn="$fn" -v szb="$szbr" -v wm="$words" -v cm="$csv" \
+            run_awk -v mode=dive -v fn="$fn" -v szb="$szbr" -v cm="$csv" -v tpw="$tpw" \
                     -v rate="$per_credit" -v B="$B" -v R="$R" "$AWK_LIB$AWK_TOPIC$AWK_FILE" < "$file"
             if [[ $csv -eq 0 ]]; then printf '%s\n\n' "$heavy"; fi
         done
@@ -507,82 +524,81 @@ main() {
     fi
 
     # ---- totals & statistics -----------------------------------------------------
-    local g_fcred g_usd g_szh
-    IFS=$'\t' read -r g_fcred g_usd g_szh < <(
-        run_awk -v c="$g_cred" -v b="$g_bytes" -v rate="$per_credit" \
-            "$AWK_LIB"' BEGIN { printf "%s\t%.2f\t%s\n", cn(c, 0), c * rate, hs(b) }'
+    local g_fcred g_usd g_szh g_fw g_ft
+    IFS=$'\t' read -r g_fcred g_usd g_szh g_fw g_ft < <(
+        run_awk -v c="$g_cred" -v b="$g_bytes" -v w="$g_words" -v t="$g_tok" -v rate="$per_credit" \
+            "$AWK_LIB"' BEGIN { printf "%s\t%.2f\t%s\t%s\t%s\n", cn(c, 0), c * rate, hs(b), cn(w, 0), cn(t, 0) }'
     )
 
     # ---- CSV summary -------------------------------------------------------------
     if [[ $csv -eq 1 ]]; then
-        if [[ $words -eq 1 ]]; then echo "FilenameNoExt,FileSizeBytes,FileSizeHuman,WordCount,TotalCredits,USDValue"
-        else echo "FilenameNoExt,FileSizeBytes,FileSizeHuman,TotalCredits,USDValue"; fi
+        echo "FilenameNoExt,FileSizeBytes,FileSizeHuman,WordCount,EstTokens,TotalCredits,USDValue"
         for item in "${sorted[@]}"; do
-            IFS=$US read -r tot dk fn ftot fusd szbr szhr wc_r file <<< "$item"
+            IFS=$US read -r tot dk fn ftot fusd szbr szhr wc_r tk_r fw_r ft_r file <<< "$item"
             fn=${fn//\"/\"\"}
-            if [[ $words -eq 1 ]]; then echo "\"$fn\",$szbr,\"$szhr\",$wc_r,$tot,$fusd"
-            else echo "\"$fn\",$szbr,\"$szhr\",$tot,$fusd"; fi
+            echo "\"$fn\",$szbr,\"$szhr\",$wc_r,$tk_r,$tot,$fusd"
         done
-        if [[ $words -eq 1 ]]; then echo "\"TOTAL\",$g_bytes,\"$g_szh\",$g_words,$g_cred,$g_usd"
-        else echo "\"TOTAL\",$g_bytes,\"$g_szh\",$g_cred,$g_usd"; fi
+        echo "\"TOTAL\",$g_bytes,\"$g_szh\",$g_words,$g_tok,$g_cred,$g_usd"
         return 0
     fi
 
     # ---- table summary -------------------------------------------------------------
-    local cw=$max_l extra=0
-    [[ $words -eq 1 ]] && extra=13
+    local cw=$max_l
     local bl dl
-    bl=$(repeat "=" $((cw + 49 + extra)))
+    bl=$(repeat "=" $((cw + 77)))
     dl=$(repeat "-" "$cw")
     echo "$bl"
-    if [[ $words -eq 1 ]]; then
-        printf "%s%-${cw}s : %10s : %10s : %15s : %12s%s\n" "$B" "Filename (No Extension)" "File Size" "Words" "Total Credits" "USD Value" "$R"
-        echo "$bl"
-        printf "%-${cw}s-:-%10s-:-%10s-:-%15s-:-%12s\n" "$dl" "$(repeat - 10)" "$(repeat - 10)" "$(repeat - 15)" "$(repeat - 12)"
-    else
-        printf "%s%-${cw}s : %10s : %15s : %12s%s\n" "$B" "Filename (No Extension)" "File Size" "Total Credits" "USD Value" "$R"
-        echo "$bl"
-        printf "%-${cw}s-:-%10s-:-%15s-:-%12s\n" "$dl" "$(repeat - 10)" "$(repeat - 15)" "$(repeat - 12)"
-    fi
+    printf "%s%-${cw}s : %10s : %10s : %11s : %15s : %12s%s\n" "$B" "Filename (No Extension)" "File Size" "Words" "Est. Tokens" "Total Credits" "USD Value" "$R"
+    echo "$bl"
+    printf "%-${cw}s-:-%10s-:-%10s-:-%11s-:-%15s-:-%12s\n" "$dl" "$(repeat - 10)" "$(repeat - 10)" "$(repeat - 11)" "$(repeat - 15)" "$(repeat - 12)"
     for item in "${sorted[@]}"; do
-        IFS=$US read -r tot dk fn ftot fusd szbr szhr wc_r file <<< "$item"
-        if [[ $words -eq 1 ]]; then
-            printf "%-${cw}s : %10s : %10s : %15s : \$%10.2f\n" "$fn" "$szhr" "$wc_r" "$ftot" "$fusd"
-        else
-            printf "%-${cw}s : %10s : %15s : \$%10.2f\n" "$fn" "$szhr" "$ftot" "$fusd"
-        fi
+        IFS=$US read -r tot dk fn ftot fusd szbr szhr wc_r tk_r fw_r ft_r file <<< "$item"
+        printf "%-${cw}s : %10s : %10s : %11s : %15s : \$%10.2f\n" "$fn" "$szhr" "$fw_r" "$ft_r" "$ftot" "$fusd"
     done
     echo "$bl"
-    if [[ $words -eq 1 ]]; then
-        printf "%s%-${cw}s : %10s : %10s : %15s : \$%10.2f%s\n" "$B" "TOTAL" "$g_szh" "$g_words" "$g_fcred" "$g_usd" "$R"
-    else
-        printf "%s%-${cw}s : %10s : %15s : \$%10.2f%s\n" "$B" "TOTAL" "$g_szh" "$g_fcred" "$g_usd" "$R"
-    fi
+    printf "%s%-${cw}s : %10s : %10s : %11s : %15s : \$%10.2f%s\n" "$B" "TOTAL" "$g_szh" "$g_fw" "$g_ft" "$g_fcred" "$g_usd" "$R"
     echo "$bl"
     if ((${#sorted[@]} < total_n)); then
         printf '(Showing top %d of %d transcripts; TOTAL and statistics include all of them.)\n' "${#sorted[@]}" "$total_n"
     fi
 
-    # mean / median / mode (mode = most frequent value; ties -> smallest value)
-    local stats mn md mo mn_u md_u mo_u
-    stats=$(printf '%s\n' "${creds[@]}" | run_sort -n | run_awk -v rate="$per_credit" "$AWK_LIB"'
-        { v[NR] = $1 + 0; s += $1 }
-        END {
-            n = NR
-            m = s / n
-            md = (n % 2) ? v[(n + 1) / 2] : (v[n / 2] + v[n / 2 + 1]) / 2
-            mo = v[1]; mf = 1; cf = 1
-            for (i = 2; i <= n; i++) {
-                cf = (v[i] == v[i - 1]) ? cf + 1 : 1
-                if (cf > mf) { mf = cf; mo = v[i] }
-            }
-            printf "%s\t%s\t%s\t%.2f\t%.2f\t%.2f\n", cn(m, 2), cn(md, 2), cn(mo, 0), m * rate, md * rate, mo * rate
-        }')
-    IFS=$'\t' read -r mn md mo mn_u md_u mo_u <<< "$stats"
-    printf '\n%sSTATISTICAL SUMMARY (Valuation: $%s per 10,000 credits):%s\n' "$B" "$rate_label" "$R"
-    printf "  %-18s : Credits: %15s : USD: \$%10.2f\n" "Mean" "$mn" "$mn_u"
-    printf "  %-18s : Credits: %15s : USD: \$%10.2f\n" "Median" "$md" "$md_u"
-    printf "  %-18s : Credits: %15s : USD: \$%10.2f\n" "Mode" "$mo" "$mo_u"
+    # mean / median / mode per column (mode = most frequent value; ties -> smallest value)
+    col_stats() {
+        printf '%s\n' "$@" | run_sort -n | run_awk '
+            { v[NR] = $1 + 0; s += $1 }
+            END {
+                n = NR
+                md = (n % 2) ? v[(n + 1) / 2] : (v[n / 2] + v[n / 2 + 1]) / 2
+                mo = v[1]; mf = 1; cf = 1
+                for (i = 2; i <= n; i++) {
+                    cf = (v[i] == v[i - 1]) ? cf + 1 : 1
+                    if (cf > mf) { mf = cf; mo = v[i] }
+                }
+                printf "%.4f\t%.4f\t%.0f\n", s / n, md, mo
+            }'
+    }
+    local cs ws ts
+    cs=$(col_stats "${creds[@]}"); ws=$(col_stats "${wcs[@]}"); ts=$(col_stats "${tks[@]}")
+    local sl
+    sl=$(repeat "-" 18)
+    printf '\n%sSTATISTICAL SUMMARY (Valuation: $%s per 10,000 credits; Est. Tokens = words x %s):%s\n' "$B" "$rate_label" "$tpw" "$R"
+    printf "  %-18s : %15s : %12s : %13s : %13s\n" "Metric" "Credits" "USD Value" "Words" "Est. Tokens"
+    printf "  %-18s-:-%15s-:-%12s-:-%13s-:-%13s\n" "$sl" "$(repeat - 15)" "$(repeat - 12)" "$(repeat - 13)" "$(repeat - 13)"
+    run_awk -v cs="$cs" -v ws="$ws" -v ts="$ts" -v n="$total_n" -v rate="$per_credit" \
+            -v gc="$g_cred" -v gw="$g_words" -v gt="$g_tok" -v B="$B" -v R="$R" "$AWK_LIB"'
+        function row(label, c, cd, w, wd, t, td) {
+            printf "  %-18s : %15s : $%11.2f : %13s : %13s\n", label, cn(c, cd), c * rate, cn(w, wd), cn(t, td)
+        }
+        BEGIN {
+            split(cs, c, "\t"); split(ws, w, "\t"); split(ts, t, "\t")
+            printf "%s", B; row(sprintf("Total (%d file%s)", n, n == 1 ? "" : "s"), gc, 0, gw, 0, gt, 0); printf "%s", R
+            row("Mean",   c[1], 2, w[1], 2, t[1], 2)
+            row("Median", c[2], 2, w[2], 2, t[2], 2)
+            row("Mode",   c[3], 0, w[3], 0, t[3], 0)
+        }'
+    echo "  Note: Words and Est. Tokens cover only the saved chat transcript text. They do NOT"
+    echo "        include the background agent work (programming, tool calls, testing) that the"
+    echo "        credits actually paid for, so they understate the real tokens used."
     echo "$bl"
 }
 
@@ -616,6 +632,8 @@ EOF
     check "summary total credits" "$out" "1,236,722"
     check "summary USD value"     "$out" "1236.72"
     check "filename with ':'"     "$out" "self test: sample-abacusai-transcript"
+    check "words/tokens columns"  "$out" "Est. Tokens"
+    check "stats total row"       "$out" "Total (1 file)"
     out=$( (main --no-color --dive "$tmp") 2>&1 ) || true
     check "dive row formatting"   "$out" "1,234,567"
     check "dive project totals"   "$out" "1,236,722"
