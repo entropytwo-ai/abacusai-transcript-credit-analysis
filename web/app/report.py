@@ -88,7 +88,8 @@ def statistics(rows: list, con) -> dict:
     s = settings(con)
     n = len(rows)
     cols = {"credits": [r["credits_i"] for r in rows], "words": [r["words"] for r in rows],
-            "tokens": [r["tokens"] for r in rows]}
+            "tokens": [r["tokens"] for r in rows], "turns": [r["turns"] for r in rows],
+            "runtime": [r["runtime_secs"] for r in rows]}
     res = {"n": n}
     for k, v in cols.items():
         res[k] = {"total": sum(v), "mean": (sum(v) / n) if n else 0, "median": median(v) if n else 0,

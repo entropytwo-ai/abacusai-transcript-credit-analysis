@@ -1,12 +1,12 @@
 <h2>Statistical summary</h2>
 <p class="muted">Valuation: ${{ settings.rate | n2 }} per 10,000 credits · Est. Tokens = words × {{ settings.tpw }}</p>
 <div class="scroll"><table class="grid stats">
-  <thead><tr><th>Metric</th><th class="num">Credits</th><th class="num">USD Value</th><th class="num">Words</th><th class="num">Est. Tokens</th></tr></thead>
+  <thead><tr><th>Metric</th><th class="num">Turns</th><th class="num">Time Spent</th><th class="num">Credits</th><th class="num">USD Value</th><th class="num">Words</th><th class="num">Est. Tokens</th></tr></thead>
   <tbody>
-  <tr><td>Total ({{ stats.n }} project{{ '' if stats.n == 1 else 's' }})</td><td class="num">{{ stats.credits.total | n0 }}</td><td class="num">{{ stats.usd.total | money }}</td><td class="num">{{ stats.words.total | n0 }}</td><td class="num">{{ stats.tokens.total | n0 }}</td></tr>
-  <tr><td>Mean</td><td class="num">{{ stats.credits.mean | n2 }}</td><td class="num">{{ stats.usd.mean | money }}</td><td class="num">{{ stats.words.mean | n2 }}</td><td class="num">{{ stats.tokens.mean | n2 }}</td></tr>
-  <tr><td>Median</td><td class="num">{{ stats.credits.median | n2 }}</td><td class="num">{{ stats.usd.median | money }}</td><td class="num">{{ stats.words.median | n2 }}</td><td class="num">{{ stats.tokens.median | n2 }}</td></tr>
-  <tr><td>Mode</td><td class="num">{{ stats.credits.mode | n0 }}</td><td class="num">{{ stats.usd.mode | money }}</td><td class="num">{{ stats.words.mode | n0 }}</td><td class="num">{{ stats.tokens.mode | n0 }}</td></tr>
+  <tr><td>Total ({{ stats.n }} project{{ '' if stats.n == 1 else 's' }})</td><td class="num">{{ stats.turns.total | n0 }}</td><td class="num">{{ stats.runtime.total | dur }}</td><td class="num">{{ stats.credits.total | n0 }}</td><td class="num">{{ stats.usd.total | money }}</td><td class="num">{{ stats.words.total | n0 }}</td><td class="num">{{ stats.tokens.total | n0 }}</td></tr>
+  <tr><td>Mean</td><td class="num">{{ stats.turns.mean | n2 }}</td><td class="num">{{ stats.runtime.mean | dur }}</td><td class="num">{{ stats.credits.mean | n2 }}</td><td class="num">{{ stats.usd.mean | money }}</td><td class="num">{{ stats.words.mean | n2 }}</td><td class="num">{{ stats.tokens.mean | n2 }}</td></tr>
+  <tr><td>Median</td><td class="num">{{ stats.turns.median | n2 }}</td><td class="num">{{ stats.runtime.median | dur }}</td><td class="num">{{ stats.credits.median | n2 }}</td><td class="num">{{ stats.usd.median | money }}</td><td class="num">{{ stats.words.median | n2 }}</td><td class="num">{{ stats.tokens.median | n2 }}</td></tr>
+  <tr><td>Mode</td><td class="num">{{ stats.turns.mode | n0 }}</td><td class="num">{{ stats.runtime.mode | dur }}</td><td class="num">{{ stats.credits.mode | n0 }}</td><td class="num">{{ stats.usd.mode | money }}</td><td class="num">{{ stats.words.mode | n0 }}</td><td class="num">{{ stats.tokens.mode | n0 }}</td></tr>
   </tbody>
 </table></div>
 <p class="note"><b>Note:</b> Words and Est. Tokens cover only the chat transcript text (your prompts and the agent's visible replies).

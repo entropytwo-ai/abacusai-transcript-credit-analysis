@@ -40,6 +40,23 @@ templates.env.filters["money"] = lambda v: f"${(v or 0):,.2f}"
 templates.env.filters["mins"] = lambda s: "<1" if 0 < (s or 0) < 60 else f"{(s or 0) / 60:,.0f}"
 
 
+def _dur(s):
+    """Human-readable duration from seconds: '2h 15m', '45m 03s', '12s', or '—' for none."""
+    s = int(round(s or 0))
+    if s <= 0:
+        return "\u2014"
+    h, rem = divmod(s, 3600)
+    m, sec = divmod(rem, 60)
+    if h:
+        return f"{h}h {m:02d}m"
+    if m:
+        return f"{m}m {sec:02d}s"
+    return f"{sec}s"
+
+
+templates.env.filters["dur"] = _dur
+
+
 @app.middleware("http")
 async def _cache_control(request: Request, call_next):
     """Never let a proxy/CDN cache dynamic pages: a cached response can drop the
