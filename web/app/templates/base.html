@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}Credit Dashboard{% endblock %} · Abacus.AI credits</title>
+<link rel="stylesheet" href="/static/style.css?v={{ version }}">
+</head>
+<body id="top">
+<header class="top">
+  <a class="brand" href="/">▌credit-scanner<span>web</span></a>
+  {% if user %}
+  <nav>
+    <a href="/">Summary</a>
+    <a href="/dive">Dive-in</a>
+    {% if user.role == 'owner' %}<a href="/admin/projects">Projects</a><a href="/admin/users">Sharing</a><a href="/admin/settings">Settings</a>{% endif %}
+    <a href="/account">{{ user.username }}</a>
+    <form method="post" action="/logout" class="inline"><button class="link">Log out</button></form>
+  </nav>
+  {% endif %}
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer>credit-scanner web v{{ version }} · data from the Abacus.AI API ·
+  <a href="https://github.com/entropytwo-ai/abacusai-transcript-credit-analysis">source (GPLv3)</a></footer>
+{% if user %}<script>window.CSRF = "{{ user.csrf }}";</script>{% endif %}
+<script src="/static/app.js?v={{ version }}"></script>
+</body>
+</html>

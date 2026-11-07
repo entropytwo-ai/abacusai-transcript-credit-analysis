@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Sharing{% endblock %}
+{% block content %}
+<h1>Sharing</h1>
+<p class="muted">Viewers can see every report and download CSVs. They cannot sync, change projects, settings or accounts.</p>
+{% if error %}<p class="err">{{ error }}</p>{% endif %}
+{% if new_pw %}
+<div class="panel ok">Viewer <b>{{ new_user }}</b> created. Send them the site address, the username and this password
+(it is shown only once; they can change it under their account): <code class="pw">{{ new_pw }}</code></div>
+{% endif %}
+<form method="post" action="/admin/users/add" class="row">
+  <input type="hidden" name="csrf" value="{{ user.csrf }}">
+  <input name="username" placeholder="new viewer username" required>
+  <button class="btn">Add viewer</button>
+</form>
+<table class="grid">
+  <thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr><td>{{ u.username }}</td><td>{{ u.role }}</td><td>{{ u.created_at[:10] }}</td>
+    <td>{% if u.role == 'viewer' %}<form method="post" action="/admin/users/delete" class="inline" onsubmit="return confirm('Remove {{ u.username }}?')">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="user_id" value="{{ u.id }}"><button class="link danger">Remove</button></form>{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

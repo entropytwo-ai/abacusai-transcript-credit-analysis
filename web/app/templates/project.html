@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ p.name }}{% endblock %}
+{% block content %}
+{% include "_syncbar.html" %}
+<p><a href="/">← Summary</a></p>
+<h1>Dive-in: {{ p.name }}</h1>
+<p class="muted">Created {{ p.created_date }} · last activity {{ p.last_date }} · {{ p.size_h }} of chat text ·
+{{ chats | length }} chat{{ '' if chats | length == 1 else 's' }}: {% for c in chats %}{{ c.name }}{{ ', ' if not loop.last }}{% endfor %}</p>
+{% if p.notes %}<p>{{ p.notes }}</p>{% endif %}
+{% set show_chat = chats | length > 1 %}
+{% include "_turns.html" %}
+<p class="note">Excerpts are short AI-written summaries with personal data removed. Words / Est. Tokens count only the chat text, not the agent's background work.</p>
+{% endblock %}

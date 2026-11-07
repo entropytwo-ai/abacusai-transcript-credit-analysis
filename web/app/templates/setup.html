@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Set up{% endblock %}
+{% block content %}
+<form method="post" action="/setup" class="panel narrow">
+  <h1>Create the owner account</h1>
+  <p class="muted">This link works once. The owner can sync, group projects and share access.</p>
+  {% if error %}<p class="err">{{ error }}</p>{% endif %}
+  <input type="hidden" name="token" value="{{ token }}">
+  <label>Username <input name="username" autocomplete="username" required autofocus></label>
+  <label>Password (10+ characters) <input name="password" type="password" minlength="10" autocomplete="new-password" required></label>
+  <button class="btn">Create account</button>
+</form>
+{% endblock %}

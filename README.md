@@ -41,6 +41,10 @@ More choices are in [Installation](#installation).
 - [Sample output](#sample-output)
 - [How credits are detected](#how-credits-are-detected)
 - [How words and tokens are estimated](#how-words-and-tokens-are-estimated)
+- [Web dashboard](#web-dashboard)
+  - [Run it](#run-it)
+  - [What the site shows](#what-the-site-shows)
+  - [Projects, sharing and privacy](#projects-sharing-and-privacy)
 - [Development and tests](#development-and-tests)
 - [Troubleshooting / FAQ](#troubleshooting--faq)
 - [Changelog](#changelog)
@@ -293,6 +297,53 @@ FilenameNoExt,FileSizeBytes,FileSizeHuman,WordCount,EstTokens,TotalCredits,USDVa
 - **Est. Tokens** = words × ratio, rounded. The default ratio is `1.33` (the common rule of thumb of about 0.75 English words per token). Use `--tokens-per-word` to change it, for example `-t 1.5` for code-heavy chats. File and grand totals are worked out from each file's word count, so a dive's token rows can differ from **PROJECT TOTALS** by a token or two of rounding.
 - **Scope:** both columns cover **only the saved chat transcript text**. They do **not** include the background agent work (programming, tool calls, file reads, testing) that the credits actually paid for. The real token use behind the credits is usually much higher. The statistical summary prints this note too.
 - The statistical summary shows a **Total** row (all files) and **Mean / Median / Mode** per transcript for credits, USD, words and estimated tokens. Mode ties go to the smallest value.
+
+<sub>[↑ Back to contents](#table-of-contents)</sub>
+
+## Web dashboard
+
+`web/` holds a private website that shows the same report as `credit-scanner`, built straight from the Abacus.AI API. You don't need to copy and paste transcripts any more. It pulls every **Abacus AI Agent** chat, groups split chats into one project, and adds a short excerpt of what you asked and what the agent did for every turn.
+
+### Run it
+
+Requires Python 3.9+ and an Abacus.AI API key (Abacus.AI → profile → **API Keys**).
+
+```bash
+cd web
+export ABACUS_API_KEY=...      # keep it out of shell history/scripts you share
+./run.sh                       # creates .venv, installs, verifies, starts on port 3000
+```
+
+On first start, `run.sh` prints a one-time `/setup?token=...` link. Open it on the site's address to create the **owner** account. The link stops working once the owner exists.
+
+| Command | What it does |
+|---|---|
+| `./run.sh` | Install/upgrade dependencies, verify templates, static files, database and API key, then start the server (`PORT`, `HOST` env vars). |
+| `./run.sh --check` | Install and verify only. |
+| `./run.sh --sync` | Run one sync in the foreground and print the counts. |
+| `.venv/bin/python -m pytest tests` | Offline test suite (fake API client, no credits used). |
+
+Data lives in `web/data/` (SQLite, override with `CREDIT_DASH_DATA`). It is git-ignored, so excerpts, chat names and accounts never reach the repository.
+
+<sub>[↑ Back to contents](#table-of-contents)</sub>
+
+### What the site shows
+
+- **Summary** has the same columns as `credit-scanner`: text size, words, est. tokens, total credits and USD. It adds **Created** (first chat in the project), **Last activity**, **Chats** and **Turns**. Below the table are the **TOTAL** row, the Total/Mean/Median/Mode statistics (with the note that tokens cover chat text only) and a credits-per-day chart. Click any column heading to sort.
+- **Project page** shows one row per agent turn: date, chat, two short excerpts (**You:** and **Agent:**, each at most two lines), words, est. tokens, agent run time, credits and USD. **PROJECT TOTALS** is at the bottom.
+- **Dive-in** shows every project on one page, like `credit-scanner -d`.
+- **CSV downloads** use the `credit-scanner` column order, with extra columns (Created, LastActivity, Chats, Turns, AgentRuntimeSecs, Date, Chat, AgentSummary) added at the end.
+- **Sync**: once a day automatically (after the UTC hour set in Settings), plus a **Sync now** button. Only chats with new activity are downloaded again, and excerpts are written only for new or changed turns.
+- **Credits** come from each reply's `compute_points_used`, the same number the chat shows as `Credits: N`. Every billed turn is counted, including a chat's first turn when it started as a regular chat, which manual copies often miss.
+- **Future metadata:** each turn's full API record is stored, compressed, and every table has an `extra` JSON column, so new data points can be added later without re-importing.
+
+<sub>[↑ Back to contents](#table-of-contents)</sub>
+
+### Projects, sharing and privacy
+
+- **Grouping**: chats whose names differ only by a number prefix or suffix (`1-xtree dev`, `2-xtree dev`) join one project automatically, and every new chat is added on the next sync. On the **Projects** page you can move a chat, start a new project, exclude a chat, rename a project, or merge two by giving one the other's name. Your one-off starting layout can go in `web/data/projects-seed.json` (`{"projects": {"slug": [chat ids]}, "excluded": [...], "redact_terms": [...]}`). It is applied on the first sync, and UI changes win after that.
+- **Sharing**: the owner adds **viewer** accounts on the **Sharing** page. A password is generated and shown once. Viewers can read every page and download CSVs, but cannot sync or change anything. Everyone can change their own password.
+- **Privacy**: excerpts are written by an Abacus.AI LLM (model set in Settings) with instructions to leave out personal data. Pattern scrubbing runs before and after, removing emails, URLs, IP/MAC addresses, user folders, phone numbers, keys/tokens, wallet addresses, `password=` values and your own list of names, usernames and hostnames (Settings). If the LLM fails, a scrubbed first-sentence extract is used. Pages carry `noindex`, sessions are signed HttpOnly cookies, forms carry CSRF tokens, passwords use scrypt, and logins are rate-limited.
 
 <sub>[↑ Back to contents](#table-of-contents)</sub>
 

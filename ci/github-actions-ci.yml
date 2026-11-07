@@ -8,7 +8,7 @@ on:
 
 jobs:
   linux:
-    name: shellcheck + tests (Linux: gawk, mawk, BWK awk, busybox)
+    name: "shellcheck + tests (Linux: gawk, mawk, BWK awk, busybox)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
         run: make test
 
   macos:
-    name: tests (macOS: BSD awk/sort/date, Homebrew bash)
+    name: "tests (macOS: BSD awk/sort/date, Homebrew bash)"
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,17 @@ jobs:
           export PATH="$(brew --prefix)/bin:$PATH"
           bash --version | head -n 1
           TEST_AWKS="awk" bash tests/run-tests.sh
+
+  web:
+    name: web dashboard tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: install
+        run: pip install -r web/requirements-dev.txt
+      - name: pytest
+        working-directory: web
+        run: python -m pytest -q tests

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+{% block content %}
+<h1>Projects and chats</h1>
+<p class="muted">Every new agent chat is added on the next sync. Chats whose names differ only by a number prefix or suffix
+(e.g. <i>1-xtree dev</i> / <i>2-xtree dev</i>) join the same project automatically. Move a chat, start a new project or exclude it here.
+Renaming a project to the name of another project merges them.</p>
+{% if msg %}<p class="ok">{{ msg }}</p>{% endif %}
+<h2>Chats</h2>
+<div class="scroll"><table class="grid">
+  <thead><tr><th>Chat</th><th>Created</th><th class="num">Turns</th><th class="num">Credits</th><th>Project</th></tr></thead>
+  <tbody>
+  {% for c in convs %}
+  <tr class="{{ 'excluded' if c.excluded }}">
+    <td>{{ c.name }}</td><td>{{ (c.created_at or '')[:10] }}</td><td class="num">{{ c.turns }}</td><td class="num">{{ c.credits | n0 }}</td>
+    <td><form method="post" action="/admin/projects/assign" class="row assign">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="conv_id" value="{{ c.id }}">
+      <select name="project">
+        {% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if p.id == c.project_id and not c.excluded }}>{{ p.name }}</option>{% endfor %}
+        <option value="__new__">➕ new project…</option>
+        <option value="__exclude__" {{ 'selected' if c.excluded }}>🚫 excluded</option>
+      </select>
+      <input name="new_name" placeholder="new project name" class="newname">
+      <button class="btn small">Save</button>
+    </form></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<h2>Rename / merge projects</h2>
+<div class="scroll"><table class="grid">
+  <thead><tr><th>Project</th><th>Name and notes</th></tr></thead>
+  <tbody>
+  {% for p in projects %}
+  <tr><td>{{ p.slug }}</td><td><form method="post" action="/admin/projects/rename" class="row">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="project_id" value="{{ p.id }}">
+    <input name="name" value="{{ p.name }}" required><input name="notes" value="{{ p.notes or '' }}" placeholder="notes (shown on the project page)">
+    <button class="btn small">Save</button></form></td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,19 @@
+<div class="scroll"><table class="grid dive">
+  <thead><tr><th>Date</th><th>Context</th><th class="num">Words</th><th class="num">Est. Tokens</th><th class="num">Run time</th><th class="num">Credits</th><th class="num">USD</th></tr></thead>
+  <tbody>
+  {% for t in turns %}
+  <tr>
+    <td class="date">{{ t.date }}{% if show_chat %}<div class="muted small">{{ t.chat_name }}</div>{% endif %}</td>
+    <td class="ctx">
+      <div class="you clamp"><b>You:</b> {% if t.attachments %}<span class="att">[{{ t.attachments | join(', ') }}]</span> {% endif %}{{ t.user_brief or '(excerpt pending next sync)' }}</div>
+      <div class="agent clamp"><b>Agent:</b> {{ t.agent_brief or '(excerpt pending next sync)' }}</div>
+    </td>
+    <td class="num">{{ t.words | n0 }}</td><td class="num">{{ t.tokens | n0 }}</td>
+    <td class="num">{% if t.runtime_secs %}{{ t.runtime_secs | mins }} min{% endif %}</td>
+    <td class="num">{{ t.credits_i | n0 }}</td><td class="num">{{ t.usd | money }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="2">PROJECT TOTALS ({{ p.turns }} turns)</td><td class="num">{{ p.words | n0 }}</td><td class="num">{{ p.tokens | n0 }}</td>
+    <td class="num">{{ p.runtime_secs | mins }} min</td><td class="num">{{ p.credits_i | n0 }}</td><td class="num">{{ p.usd | money }}</td></tr></tfoot>
+</table></div>

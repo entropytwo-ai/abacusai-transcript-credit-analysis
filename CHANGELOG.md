@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Web 1.0.0] - 2026-11-07
+
+### Added
+- `web/`: a private web dashboard (FastAPI + SQLite) that builds the credit-scanner report straight from the Abacus.AI API, with no copy and paste.
+- Summary with Created / Last activity / Chats / Turns columns, TOTAL row, Total/Mean/Median/Mode statistics with the token-scope note, and a credits-per-day chart.
+- Per-project and all-project dive-in pages with two-line, PII-scrubbed **You:** / **Agent:** excerpts, plus agent run time per turn.
+- Automatic grouping of split chats, plus a Projects page to move, exclude, rename or merge.
+- Daily sync and a **Sync now** button. Incremental: only changed chats are downloaded and only new turns get excerpts.
+- Owner and viewer accounts for sharing, one-time setup link, CSV exports, `run.sh` installer with verification, and an offline pytest suite.
+
 ## [1.2.0] - 2026-11-07
 
 ### Added
