@@ -2,7 +2,7 @@
 
 > See exactly where your Abacus.AI credits went. `credit-scanner` reads the project transcripts you have saved as text files and reports credits and USD cost per project, per step, with totals and statistics.
 
-`credit-scanner` is a single, dependency-light bash script. Point it at a folder of `*-abacusai-transcript.txt` files and it prints a summary table (file size, total credits, USD value), a TOTAL row and mean/median/mode statistics. `--dive` breaks each transcript down step by step, and `--csv` exports everything for a spreadsheet.
+`credit-scanner` is a single, dependency-light bash script. Point it at a folder of `*-abacusai-transcript.txt` files and it prints a summary table (file size, words, estimated tokens, total credits, USD value), a TOTAL row and mean/median/mode statistics. `--dive` breaks each transcript down step by step, and `--csv` exports everything for a spreadsheet.
 
 <table><tr>
 <td><img src=".github/donate-bitcoin-qr.png" width="96" alt="Bitcoin donation QR code"></td>
@@ -40,6 +40,7 @@ More choices are in [Installation](#installation).
 - [Options](#options)
 - [Sample output](#sample-output)
 - [How credits are detected](#how-credits-are-detected)
+- [How words and tokens are estimated](#how-words-and-tokens-are-estimated)
 - [Development and tests](#development-and-tests)
 - [Troubleshooting / FAQ](#troubleshooting--faq)
 - [Changelog](#changelog)
@@ -49,12 +50,12 @@ More choices are in [Installation](#installation).
 
 ## What it does
 
-- **Summary table**: one row per transcript with file size, total credits and USD value, plus a **TOTAL** row.
-- **Statistics**: mean, median and mode credits (and USD) across all transcripts.
-- **Dive-in mode** (`-d`): each transcript split into steps. Every row is labelled with the prompt you typed for that turn, with any attachment in brackets (for example `[image (1).png] Something seems broken now...`), followed by credits and USD for that step and the **PROJECT TOTALS**.
-- **Word counts** (`-w`): how much text went into each step or transcript.
+- **Summary table**: one row per transcript with file size, word count, estimated tokens, total credits and USD value, plus a **TOTAL** row.
+- **Statistics**: grand totals plus mean, median and mode for credits, USD, words and estimated tokens across all transcripts.
+- **Dive-in mode** (`-d`): each transcript split into steps. Every row is labelled with the prompt you typed for that turn, with any attachment in brackets (for example `[image (1).png] Something seems broken now...`), followed by words, estimated tokens, credits and USD for that step and the **PROJECT TOTALS**.
+- **Words and Est. Tokens** (always on): how much chat text each step or transcript has, with a token estimate (words × 1.33 by default, `--tokens-per-word` to change it). See [How words and tokens are estimated](#how-words-and-tokens-are-estimated).
 - **CSV export** (`-c`): summary or dive data ready for a spreadsheet.
-- **Sorting** (`-s`): by filename, credits, size or date. **Top N** (`-n`) for the most expensive projects.
+- **Sorting** (`-s`): by filename, credits, size, words or date. **Top N** (`-n`) for the most expensive projects.
 - **Custom price** (`--rate`): the default is **$10 per 10,000 credits** ($0.001 per credit).
 - Safe with awkward filenames (spaces, `:` and quotes). Skips hidden files, `*.csv` exports, binary files and the scanner itself.
 
@@ -168,7 +169,8 @@ credit-scanner                                    # summary of the current direc
 credit-scanner ~/Documents/abacus-ai              # summary of another directory
 credit-scanner -s credits-desc -n 5               # five most expensive projects
 credit-scanner -d raid-pricer-project-abacusai-transcript.txt   # step-by-step breakdown
-credit-scanner -dw                                # dive-in with word counts
+credit-scanner -s words                           # most text first
+credit-scanner -t 1.5                             # 1.5 tokens per word estimate
 credit-scanner -c > credits.csv                   # spreadsheet export
 credit-scanner -cd > steps.csv                    # per-step spreadsheet export
 credit-scanner -p '*-abacusai-transcript.txt'     # only matching files
@@ -183,12 +185,13 @@ Exit status: `0` success, `1` no transcript files found, `2` usage error.
 
 | Option | Description |
 |---|---|
-| `-d`, `--dive` | Per-transcript breakdown: one row per step/topic with credits and USD. |
-| `-w`, `--words` | Add word counts (summary and dive). |
+| `-d`, `--dive` | Per-transcript breakdown: one row per step/topic with words, estimated tokens, credits and USD. |
 | `-c`, `--csv` | CSV output instead of tables. |
-| `-s`, `--sort KEY` | `filename` (default), `credits-desc`, `credits-asc`, `size`, `size-asc`, `date`, `date-desc`. Aliases: `name`, `credits`. |
+| `-s`, `--sort KEY` | `filename` (default), `credits-desc`, `credits-asc`, `size`, `size-asc`, `words`, `words-asc`, `date`, `date-desc`. Aliases: `name`, `credits`, `tokens`, `tokens-asc`. |
 | `-n`, `--top N` | List only the first N transcripts after sorting. TOTAL and statistics still cover all files. |
 | `-r`, `--rate USD` | Price per 10,000 credits (default `10`). |
+| `-t`, `--tokens-per-word N` | Ratio for the Est. Tokens column (default `1.33`, about 0.75 words per token). |
+| `-w`, `--words` | Accepted for compatibility. Word counts are always shown now. |
 | `-p`, `--pattern GLOB` | Filename glob used when scanning directories (default `*`). |
 | `-D`, `--dir DIR` | Directory to scan (same as passing `DIR`). |
 | `--color WHEN` / `--no-color` | Bold headings: `auto` (default, terminals only), `always`, `never`. `NO_COLOR` is honored. |
@@ -196,7 +199,7 @@ Exit status: `0` success, `1` no transcript files found, `2` usage error.
 | `-V`, `--version` | Print version. |
 | `-h`, `--help` | Show help. |
 
-You can combine short flags (`-dw`, `-cs credits-desc`), attach values (`-n5`, `-scredits`) and write long options as `--sort=size`.
+You can combine short flags (`-dc`, `-cs credits-desc`), attach values (`-n5`, `-scredits`) and write long options as `--sort=size`.
 
 `date` sorting uses a `YYYY-MM-DD` date in the filename if there is one, and the file modification time otherwise.
 
@@ -209,23 +212,29 @@ Set `CREDIT_SCANNER_AWK` to force a particular awk, for example `CREDIT_SCANNER_
 From the bundled test fixtures, as staged by `make test` (`credit-scanner tests/fixtures`; one filename contains `:` on purpose):
 
 ```text
-======================================================================================================
-Filename (No Extension)                               :  File Size :   Total Credits :    USD Value
-======================================================================================================
-------------------------------------------------------:------------:-----------------:-------------
-barcode-splitter: invoice-project-abacusai-transcript :      186 B :           6,220 : $      6.22
-notes-without-credits                                 :       33 B :               0 : $      0.00
-raid-pricer-project-abacusai-transcript               :      310 B :          15,000 : $     15.00
-xtree project-abacusai-transcript                     :       90 B :       1,234,567 : $   1234.57
-======================================================================================================
-TOTAL                                                 :      619 B :       1,255,787 : $   1255.79
-======================================================================================================
+==================================================================================================================================
+Filename (No Extension)                               :  File Size :      Words : Est. Tokens :   Total Credits :    USD Value
+==================================================================================================================================
+------------------------------------------------------:------------:------------:-------------:-----------------:-------------
+barcode-splitter: invoice-project-abacusai-transcript :      186 B :         26 :          35 :           6,220 : $      6.22
+notes-without-credits                                 :       33 B :          6 :           8 :               0 : $      0.00
+raid-pricer-project-abacusai-transcript               :      310 B :         41 :          55 :          15,000 : $     15.00
+xtree project-abacusai-transcript                     :       90 B :         12 :          16 :       1,234,567 : $   1234.57
+==================================================================================================================================
+TOTAL                                                 :      619 B :         85 :         114 :       1,255,787 : $   1255.79
+==================================================================================================================================
 
-STATISTICAL SUMMARY (Valuation: $10 per 10,000 credits):
-  Mean               : Credits:      313,946.75 : USD: $    313.95
-  Median             : Credits:       10,610.00 : USD: $     10.61
-  Mode               : Credits:               0 : USD: $      0.00
-======================================================================================================
+STATISTICAL SUMMARY (Valuation: $10 per 10,000 credits; Est. Tokens = words x 1.33):
+  Metric             :         Credits :    USD Value :         Words :   Est. Tokens
+  -------------------:-----------------:--------------:---------------:--------------
+  Total (4 files)    :       1,255,787 : $    1255.79 :            85 :           114
+  Mean               :      313,946.75 : $     313.95 :         21.25 :         28.50
+  Median             :       10,610.00 : $      10.61 :         19.00 :         25.50
+  Mode               :               0 : $       0.00 :             6 :             8
+  Note: Words and Est. Tokens cover only the saved chat transcript text. They do NOT
+        include the background agent work (programming, tool calls, testing) that the
+        credits actually paid for, so they understate the real tokens used.
+==================================================================================================================================
 ```
 
 Dive-in mode (`credit-scanner -d tests/fixtures`, first transcript):
@@ -234,24 +243,24 @@ Dive-in mode (`credit-scanner -d tests/fixtures`, first transcript):
 ========================================================================================================
  DIVE-IN ANALYSIS: barcode-splitter: invoice-project-abacusai-transcript (186 B)
 ========================================================================================================
-Topic Summary                                 :    Credit Value :    USD Value
-----------------------------------------------:-----------------:-------------
-[screenshot.png] Create the exe file. Make... :           1,290 : $      1.29
-[barcode_split...] Virustotal had 3 securi... :           4,930 : $      4.93
-----------------------------------------------:-----------------:-------------
-PROJECT TOTALS                                :           6,220 : $      6.22
+Topic Summary                              :      Words : Est. Tokens :    Credit Value :    USD Value
+-------------------------------------------:------------:-------------:-----------------:-------------
+[screenshot.png] Create the exe file. M... :         14 :          19 :           1,290 : $      1.29
+[barcode_split...] Virustotal had 3 sec... :         12 :          16 :           4,930 : $      4.93
+-------------------------------------------:------------:-------------:-----------------:-------------
+PROJECT TOTALS                             :         26 :          35 :           6,220 : $      6.22
 ========================================================================================================
 ```
 
 CSV (`credit-scanner -c -s credits-desc tests/fixtures`):
 
 ```text
-FilenameNoExt,FileSizeBytes,FileSizeHuman,TotalCredits,USDValue
-"xtree project-abacusai-transcript",90,"90 B",1234567,1234.57
-"raid-pricer-project-abacusai-transcript",310,"310 B",15000,15.00
-"barcode-splitter: invoice-project-abacusai-transcript",186,"186 B",6220,6.22
-"notes-without-credits",33,"33 B",0,0.00
-"TOTAL",619,"619 B",1255787,1255.79
+FilenameNoExt,FileSizeBytes,FileSizeHuman,WordCount,EstTokens,TotalCredits,USDValue
+"xtree project-abacusai-transcript",90,"90 B",12,16,1234567,1234.57
+"raid-pricer-project-abacusai-transcript",310,"310 B",41,55,15000,15.00
+"barcode-splitter: invoice-project-abacusai-transcript",186,"186 B",26,35,6220,6.22
+"notes-without-credits",33,"33 B",6,8,0,0.00
+"TOTAL",619,"619 B",85,114,1255787,1255.79
 ```
 
 <sub>[↑ Back to contents](#table-of-contents)</sub>
@@ -277,6 +286,16 @@ FilenameNoExt,FileSizeBytes,FileSizeHuman,TotalCredits,USDValue
 
 <sub>[↑ Back to contents](#table-of-contents)</sub>
 
+## How words and tokens are estimated
+
+- **Words** are whitespace-separated words in the transcript text. `Credits:` lines are not counted. In dive mode, a step's words are all the lines since the previous `Credits:` line: your prompt plus the agent's visible reply.
+- If text follows the last `Credits:` line, it gets its own `(text after last Credits line)` row with 0 credits, so the Words column always adds up to **PROJECT TOTALS**. A file with no `Credits:` lines shows one `(no Credits lines found)` row.
+- **Est. Tokens** = words × ratio, rounded. The default ratio is `1.33` (the common rule of thumb of about 0.75 English words per token). Use `--tokens-per-word` to change it, for example `-t 1.5` for code-heavy chats. File and grand totals are worked out from each file's word count, so a dive's token rows can differ from **PROJECT TOTALS** by a token or two of rounding.
+- **Scope:** both columns cover **only the saved chat transcript text**. They do **not** include the background agent work (programming, tool calls, file reads, testing) that the credits actually paid for. The real token use behind the credits is usually much higher. The statistical summary prints this note too.
+- The statistical summary shows a **Total** row (all files) and **Mean / Median / Mode** per transcript for credits, USD, words and estimated tokens. Mode ties go to the smallest value.
+
+<sub>[↑ Back to contents](#table-of-contents)</sub>
+
 ## Development and tests
 
 ```bash
@@ -287,7 +306,7 @@ make check    # both
 
 `tests/run-tests.sh` runs the scanner against the sample transcripts in `tests/fixtures/`, including filenames with spaces and `:`, plus a hidden file, a CSV export, a binary file and a fake `credit-scanner.sh` that must all be skipped. Every check runs once per awk found on the machine (awk, gawk, mawk, original-awk/nawk, busybox awk) and covers:
 
-- Summary, dive, dive+words and both CSV outputs compared against golden files in `tests/expected/`.
+- Summary, dive, real-format dive and all CSV outputs compared against golden files in `tests/expected/`, plus words/tokens totals, statistics rows and `--tokens-per-word`.
 - No `\1,\2` artifacts in dive output, and totals above 2³¹ do not overflow.
 - Every sort key, `--top`, `--rate`, `--pattern`, multiple file arguments and scanning the current directory.
 - Error handling and exit codes.

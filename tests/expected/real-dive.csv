@@ -1,5 +1,5 @@
-Filename,FileSizeBytes,TopicSummary,Credits,USD
-"real-format-project-abacusai-transcript",593,"[demo] demo project title",1543,1.54
-"real-format-project-abacusai-transcript",593,"[image (1).png] It mostly works but the colors are off.",481,0.48
-"real-format-project-abacusai-transcript",593,"Make it support NixOS too. And push.",645,0.65
-"real-format-project-abacusai-transcript",593,"OK, getting this: ✔ nixos-rebuild built and activated t...",2000,2.00
+Filename,FileSizeBytes,TopicSummary,WordCount,EstTokens,Credits,USD
+"real-format-project-abacusai-transcript",593,"[demo] demo project title",17,23,1543,1.54
+"real-format-project-abacusai-transcript",593,"[image (1).png] It mostly works but the colors are off.",27,36,481,0.48
+"real-format-project-abacusai-transcript",593,"Make it support NixOS too. And push.",22,29,645,0.65
+"real-format-project-abacusai-transcript",593,"OK, getting this: ✔ nixos-rebuild built and activated t...",29,39,2000,2.00

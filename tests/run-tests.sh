@@ -78,10 +78,12 @@ for AWK_IMPL in "${AWKS[@]}"; do
     out=$(run --dive "$FIX")
     assert_golden    "dive table matches golden output" "$out" "$EXP/dive.txt"
     assert_not_contains "dive has no \\1,\\2 artifacts" "$out" '\1'
-    assert_contains  "dive project totals formatted" "$out" "PROJECT TOTALS                                :       1,234,567 : \$   1234.57"
+    assert_contains  "dive project totals formatted" "$out" "PROJECT TOTALS                             :         12 :          16 :       1,234,567 : \$   1234.57"
+    assert_contains  "dive trailing-text row" "$out" "(text after last Credits line)"
+    assert_contains  "dive no-credits row" "$out" "(no Credits lines found)"
 
     out=$(run --dive --words "$FIX")
-    assert_golden    "dive+words matches golden output" "$out" "$EXP/dive-words.txt"
+    assert_golden    "-w is a compatible no-op (dive)" "$out" "$EXP/dive.txt"
 
     out=$(run --csv "$FIX")
     assert_golden    "summary CSV matches golden output" "$out" "$EXP/summary.csv"
@@ -90,7 +92,27 @@ for AWK_IMPL in "${AWKS[@]}"; do
     assert_golden    "dive CSV matches golden output" "$out" "$EXP/dive.csv"
 
     out=$(run -cw "$FIX")
-    assert_contains  "bundled -cw adds WordCount column" "$out" '"TOTAL",619,"619 B",85,1255787,1255.79'
+    assert_contains  "bundled -cw still accepted" "$out" '"TOTAL",619,"619 B",85,114,1255787,1255.79'
+
+    out=$(run "$FIX")
+    assert_contains  "summary has Words/Est. Tokens headers" "$out" ":      Words : Est. Tokens :"
+    assert_contains  "stats total row" "$out" "Total (4 files)    :       1,255,787 : \$    1255.79 :            85 :           114"
+    assert_contains  "stats mean row"  "$out" "Mean               :      313,946.75 : \$     313.95 :         21.25 :         28.50"
+    assert_contains  "stats median row" "$out" "Median             :       10,610.00 : \$      10.61 :         19.00 :         25.50"
+    assert_contains  "stats mode row"  "$out" "Mode               :               0 : \$       0.00 :             6 :             8"
+    assert_contains  "stats token-scope note" "$out" "do NOT"
+
+    out=$(run -c -t 2 "$FIX" | tail -n 1)
+    assert_eq        "--tokens-per-word 2" "$out" '"TOTAL",619,"619 B",85,170,1255787,1255.79'
+    out=$(run -c --tokens-per-word=1 "$FIX" | tail -n 1)
+    assert_eq        "--tokens-per-word=1" "$out" '"TOTAL",619,"619 B",85,85,1255787,1255.79'
+    assert_status    "bad --tokens-per-word exits 2" 2 run -t abc "$FIX"
+    out=$(run -c -s words "$FIX" | sed -n 2p)
+    assert_contains  "sort words" "$out" '"raid-pricer-project-abacusai-transcript"'
+    out=$(run -c -s tokens-asc "$FIX" | sed -n 2p)
+    assert_contains  "sort tokens-asc" "$out" '"notes-without-credits"'
+    out=$(run -dc "$FIX" | awk -F, 'NR>1 && $1 ~ /xtree/ {w+=$(NF-3); t+=$(NF-2)} END {print w}')
+    assert_eq        "dive word rows add up to file total" "$out" 12
 
     out=$(run -c -s credits-desc "$FIX" | sed -n 2p)
     assert_contains  "sort credits-desc" "$out" '"xtree project-abacusai-transcript"'
@@ -109,12 +131,12 @@ for AWK_IMPL in "${AWKS[@]}"; do
     assert_contains  "attached sort value applied" "$out" '"xtree project-abacusai-transcript"'
 
     out=$(run --rate 20 -c "$FIX" | tail -n 1)
-    assert_eq        "--rate 20 doubles USD" "$out" '"TOTAL",619,"619 B",1255787,2511.57'
+    assert_eq        "--rate 20 doubles USD" "$out" '"TOTAL",619,"619 B",85,114,1255787,2511.57'
     out=$(run --rate 12.5 "$FIX")
     assert_contains  "--rate label" "$out" 'Valuation: $12.50 per 10,000 credits'
 
     out=$(run -c "$FIX/xtree project-abacusai-transcript.txt" "$FIX/barcode-splitter: invoice-project-abacusai-transcript.txt")
-    assert_contains  "multiple FILE args (spaces and ':')" "$out" '"TOTAL",276,"276 B",1240787,1240.79'
+    assert_contains  "multiple FILE args (spaces and ':')" "$out" '"TOTAL",276,"276 B",38,51,1240787,1240.79'
 
     out=$(run -c "$FIX/.hidden-transcript.txt")
     assert_contains  "explicit hidden file is honored" "$out" ',99999,100.00'
@@ -123,7 +145,7 @@ for AWK_IMPL in "${AWKS[@]}"; do
     assert_not_contains "--pattern filters files" "$out" "notes-without-credits"
 
     out=$(cd "$FIX" && run -c | tail -n 1)
-    assert_eq        "no args scans current directory" "$out" '"TOTAL",619,"619 B",1255787,1255.79'
+    assert_eq        "no args scans current directory" "$out" '"TOTAL",619,"619 B",85,114,1255787,1255.79'
 
     mkdir -p "$TMP/dated"
     printf 'Credits: 1\n' > "$TMP/dated/b-2026-11-05-transcript.txt"
@@ -165,7 +187,7 @@ assert_eq        "install.sh exits 0" "$rc" 0
 assert_contains  "install.sh verifies installed copy" "$out" "self-test passed"
 if [[ -x $inst/bin/credit-scanner ]]; then ok "installed file is executable"; else bad "installed file is executable"; fi
 out=$("$inst/bin/credit-scanner" -c "$FIX" | tail -n 1)
-assert_eq        "installed command works" "$out" '"TOTAL",619,"619 B",1255787,1255.79'
+assert_eq        "installed command works" "$out" '"TOTAL",619,"619 B",85,114,1255787,1255.79'
 bash "$ROOT/install.sh" --prefix "$inst" --uninstall >/dev/null 2>&1
 if [[ ! -e $inst/bin/credit-scanner ]]; then ok "uninstall removes the command"; else bad "uninstall removes the command"; fi
 printf '#!/usr/bin/env bash\necho not the scanner\n' > "$TMP/fake.sh"
