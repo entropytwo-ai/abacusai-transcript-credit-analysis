@@ -1,0 +1,46 @@
+demo project title
+.sh
+SH
+Build me a script that prints hello.
+
+Code
+Files
+2
+demo.zip
+demo
+Credits: 1,543
+AG
+image (1).png
+It mostly works but the colors are off.
+3:23 PM
+
+Abacus AI Agent
+I'll fix the colors.
+bash
+Copy
+sudo apt install fortunes
+Code
+Credits: 481
+AG
+Make it support NixOS too. And push.
+4:24 PM
+
+Abacus AI Agent
+Thought for 32 seconds
+Getting this in NixOS:
+logout
+Credits: 645
+AG
+1) yes
+3:12 PM
+
+Abacus AI Agent
+Generation cancelled
+
+AG
+OK, getting this: ✔ nixos-rebuild built and activated the new configuration successfully
+3:14 PM
+
+Abacus AI Agent
+Running
+Credits: 2,000

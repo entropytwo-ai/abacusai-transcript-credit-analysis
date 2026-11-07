@@ -26,7 +26,7 @@ fi
 
 set -euo pipefail
 
-readonly VERSION="1.0.0"
+readonly VERSION="1.1.0"
 readonly PROG="credit-scanner"
 readonly REPO_URL="https://github.com/entropytwo-ai/abacusai-transcript-credit-analysis"
 # Set CREDIT_SCANNER_AWK to force a specific awk (gawk, mawk, "busybox awk", ...).
@@ -106,34 +106,18 @@ BEGIN {
     v = credit_val($0)
     fc += v
     if (mode == "dive") {
-        tp = ""; ar = ""; fb = ""; pc = ""
-        for (i = lc; i >= 1; i--) {
-            c = b[i]
-            if (is_n(c)) continue
-            if (is_a(c)) { if (ar == "") ar = c; continue }
-            if (tp == "" && length(c) > 8) { tp = c; if (ar != "" || i < lc - 5) break }
-            else if (fb == "") fb = c
-        }
-        for (i = 1; i <= lc; i++) { c = b[i]; if (!is_n(c) && length(c) > 10 && !is_a(c)) { pc = c; break } }
-        sa = ar; sub(/^Browsing /, "", sa)
-        if (length(sa) > 16) sa = substr(sa, 1, 13) "..."
-        if (pc != "" && ar != "")      ctx = "[" sa "] " pc
-        else if (tp != "" && ar != "") ctx = "[" sa "] " tp
-        else if (pc != "") ctx = pc
-        else if (tp != "") ctx = tp
-        else if (ar != "") ctx = ar
-        else if (fb != "") ctx = fb
-        else ctx = "(System Step)"
+        ctx = user_prompt()
+        if (ctx == "") ctx = heuristic_ctx()
         gsub(/[ \t]+/, " ", ctx)
-        if (length(ctx) > mc) ctx = substr(ctx, 1, mc - 3) "..."
+        ctx = clip(ctx, mc)
         u = v * rate
         if (cm == 1) {
             gsub(/"/, "\"\"", ctx)
             if (wm == 1) printf "\"%s\",%d,\"%s\",%d,%.0f,%.2f\n", qfn, szb, ctx, bw, v, u
             else         printf "\"%s\",%d,\"%s\",%.0f,%.2f\n", qfn, szb, ctx, v, u
         } else {
-            if (wm == 1) printf "%-42s : %10d : %15s : $%10.2f\n", ctx, bw, cn(v, 0), u
-            else         printf "%-45s : %15s : $%10.2f\n", ctx, cn(v, 0), u
+            if (wm == 1) printf "%s : %10d : %15s : $%10.2f\n", pad(ctx, 42), bw, cn(v, 0), u
+            else         printf "%s : %15s : $%10.2f\n", pad(ctx, 45), cn(v, 0), u
         }
     }
     split("", b); lc = 0; bw = 0
@@ -159,6 +143,81 @@ END {
             printf "%s%-45s : %15s : $%10.2f%s\n", B, "PROJECT TOTALS", cn(fc, 0), fc * rate, R
         }
     }
+}
+'
+
+# Shared awk helpers for dive-mode topic detection.
+# shellcheck disable=SC2016
+readonly AWK_TOPIC='
+function is_ts(s) { return s ~ /^[0-9][0-9]?:[0-9][0-9]([ \t]*[AaPp][Mm])?$/ }
+function is_agent(s) { return s ~ /^Abacus AI Agent$/ }
+# Byte-safe (LC_ALL=C) UTF-8 helpers: display width counts lead bytes only.
+function dw(s) { gsub(/[\200-\277]/, "", s); return length(s) }
+function clip(s, w,    n) {
+    if (dw(s) <= w) return s
+    n = w - 3
+    while (dw(substr(s, 1, n)) > w - 3) n--
+    s = substr(s, 1, n)
+    sub(/[\300-\377][\200-\277]*$/, "", s)
+    return s "..."
+}
+function pad(s, w,    n) { for (n = dw(s); n < w; n++) s = s " "; return s }
+# attachment chip: a single file name (may contain spaces), e.g. "image (1).png"
+function is_att(s) { return is_a(s) || (length(s) < 48 && s ~ /^[^ ].*\.[A-Za-z0-9][A-Za-z0-9]?[A-Za-z0-9]?[A-Za-z0-9]?$/ && s !~ /[.?!:]  *[A-Za-z]/) }
+function is_init(s) { return s ~ /^[A-Z][A-Z]?[A-Z]?$/ }
+# Real Abacus.AI transcript layout for one turn:
+#   <user initials> / [attachments] / <prompt lines> / <time, e.g. 4:24 PM> /
+#   Abacus AI Agent / ...agent work... / Credits: N
+# Returns the user prompt of the last turn in the buffer, or "" if the
+# layout is not found (callers then fall back to the generic heuristic).
+function user_prompt(    i, j, t, s, e, out, att, c) {
+    t = 0
+    for (i = lc; i >= 2; i--) {
+        if (!is_ts(b[i])) continue
+        for (j = i + 1; j <= lc && is_n(b[j]); j++) ;
+        if (j <= lc && is_agent(b[j])) { t = i; break }
+    }
+    if (!t) return ""
+    s = 1
+    for (i = t - 1; i >= 1; i--) {
+        if (is_init(b[i])) { s = i + 1; break }
+        if (is_agent(b[i]) || is_ts(b[i])) { s = i + 1; break }
+    }
+    out = ""; att = ""
+    for (i = s; i < t; i++) {
+        c = b[i]
+        if (is_n(c)) continue
+        if (out == "" && is_att(c) && i < t - 1) { if (att == "") att = c; continue }
+        out = (out == "") ? c : out " " c
+        if (length(out) > mc) break
+    }
+    if (out == "") out = att
+    else if (att != "") {
+        if (length(att) > 16) att = substr(att, 1, 13) "..."
+        out = "[" att "] " out
+    }
+    return out
+}
+function heuristic_ctx(    i, c, tp, ar, fb, pc, sa) {
+        tp = ""; ar = ""; fb = ""; pc = ""
+        for (i = lc; i >= 1; i--) {
+            c = b[i]
+            if (is_n(c)) continue
+            if (is_a(c)) { if (ar == "") ar = c; continue }
+            if (tp == "" && length(c) > 8) { tp = c; if (ar != "" || i < lc - 5) break }
+            else if (fb == "") fb = c
+        }
+        for (i = 1; i <= lc; i++) { c = b[i]; if (!is_n(c) && length(c) > 10 && !is_a(c)) { pc = c; break } }
+        sa = ar; sub(/^Browsing /, "", sa)
+        if (length(sa) > 16) sa = substr(sa, 1, 13) "..."
+        if (pc != "" && ar != "")      ctx = "[" sa "] " pc
+        else if (tp != "" && ar != "") ctx = "[" sa "] " tp
+        else if (pc != "") ctx = pc
+        else if (tp != "") ctx = tp
+        else if (ar != "") ctx = ar
+        else if (fb != "") ctx = fb
+        else ctx = "(System Step)"
+        return ctx
 }
 '
 
@@ -394,7 +453,7 @@ main() {
         ((${#fn} > max_l)) && max_l=${#fn}
         szb=$(wc -c < "$f"); szb=${szb//[[:space:]]/}
         IFS=$'\t' read -r cred wcount usd szh fcred < <(
-            run_awk -v mode=sum -v szb="$szb" -v rate="$per_credit" "$AWK_LIB$AWK_FILE" < "$f"
+            run_awk -v mode=sum -v szb="$szb" -v rate="$per_credit" "$AWK_LIB$AWK_TOPIC$AWK_FILE" < "$f"
         )
         dk=$(date_key "$fn" "$f")
         g_cred=$((g_cred + cred)); g_bytes=$((g_bytes + szb)); g_words=$((g_words + wcount))
@@ -441,7 +500,7 @@ main() {
                 fi
             fi
             run_awk -v mode=dive -v fn="$fn" -v szb="$szbr" -v wm="$words" -v cm="$csv" \
-                    -v rate="$per_credit" -v B="$B" -v R="$R" "$AWK_LIB$AWK_FILE" < "$file"
+                    -v rate="$per_credit" -v B="$B" -v R="$R" "$AWK_LIB$AWK_TOPIC$AWK_FILE" < "$file"
             if [[ $csv -eq 0 ]]; then printf '%s\n\n' "$heavy"; fi
         done
         return 0
