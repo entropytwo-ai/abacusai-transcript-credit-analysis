@@ -200,7 +200,7 @@ Options:
   -V, --version        Print version and exit.
   -h, --help           Show this help and exit.
 
-Short flags can be combined, e.g. -dw or -cs credits-desc.
+Short flags can be combined and take attached values, e.g. -dw, -cs credits-desc, -n5.
 
 Examples:
   $PROG                                   # summary of current directory
@@ -293,10 +293,17 @@ main() {
             --color=*)    color=${1#*=} ;;
             --no-color)   color="never" ;;
             --)           shift; targets+=("$@"); break ;;
-            -[a-zA-Z][a-zA-Z]*)   # bundled short flags: -dw -> -d -w
-                local flags=${1#-} i
+            -[a-zA-Z]?*)   # bundled short flags: -dw -> -d -w ; attached values: -n5, -dn5
+                local flags=${1#-} i ch
                 local -a split_flags=()
-                for ((i = 0; i < ${#flags}; i++)); do split_flags+=("-${flags:i:1}"); done
+                for ((i = 0; i < ${#flags}; i++)); do
+                    ch=${flags:i:1}
+                    split_flags+=("-$ch")
+                    if [[ $ch == [snrpD] ]]; then
+                        if ((i + 1 < ${#flags})); then split_flags+=("${flags:i+1}"); fi
+                        break
+                    fi
+                done
                 shift
                 set -- "${split_flags[@]}" "$@"
                 continue ;;
