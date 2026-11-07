@@ -1,0 +1,17 @@
+# Your own transcripts and exports (keep them out of the repo)
+*-abacusai-transcript.txt
+!tests/fixtures/*
+*.csv
+!tests/expected/*.csv
+!tests/fixtures/*.csv
+
+# Nix
+result
+result-*
+
+# Editors / OS
+*.swp
+*~
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,6 @@
+Create the exe file. Make sure it runs on Windows 10 and 11
+screenshot.png
+Credits: 1,290
+Virustotal had 3 security vendors flag it, can you fix that?
+barcode_splitter.py
+Credits: 4,930

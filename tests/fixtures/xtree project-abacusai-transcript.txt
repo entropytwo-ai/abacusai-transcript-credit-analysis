@@ -1,0 +1,3 @@
+Recreate the classic XTree Gold file manager as a terminal app
+Credits: 1,234,567
+Thanks!

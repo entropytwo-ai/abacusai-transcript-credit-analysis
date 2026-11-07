@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: shellcheck + tests (Linux: gawk, mawk, BWK awk, busybox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install awk implementations and shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck gawk mawk original-awk busybox
+      - name: shellcheck
+        run: make lint
+      - name: tests
+        run: make test
+
+  macos:
+    name: tests (macOS: BSD awk/sort/date, Homebrew bash)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bash 4+
+        run: brew install bash
+      - name: tests
+        run: |
+          export PATH="$(brew --prefix)/bin:$PATH"
+          bash --version | head -n 1
+          TEST_AWKS="awk" bash tests/run-tests.sh
