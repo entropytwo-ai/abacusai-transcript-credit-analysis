@@ -46,6 +46,8 @@ input, select, textarea { background:#0a120a; color:var(--fg); border:1px solid 
 code.pw { background:#000; padding:.2rem .5rem; border:1px solid var(--hi); color:var(--hi); font-size:1.05rem; user-select:all; }
 .syncbar { display:flex; gap:1rem; align-items:center; justify-content:flex-end; color:var(--muted); font-size:.85rem; flex-wrap:wrap; }
 .note { color:var(--muted); font-size:.85rem; border-left:3px solid var(--line); padding-left:.7rem; max-width:900px; }
+ul.note { padding-left:1.6rem; margin:.6rem 0; }
+ul.note li { margin:.3rem 0; }
 .actions { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; }
 .chart { display:flex; align-items:flex-end; gap:3px; height:200px; padding:.5rem; border:1px solid var(--line); border-radius:6px; overflow-x:auto; }
 .chart .bar { flex:1 0 18px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; }

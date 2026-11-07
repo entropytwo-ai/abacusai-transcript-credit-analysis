@@ -9,6 +9,13 @@
   <tr><td>Mode</td><td class="num">{{ stats.turns.mode | n0 }}</td><td class="num">{{ stats.runtime.mode | dur }}</td><td class="num">{{ stats.credits.mode | n0 }}</td><td class="num">{{ stats.usd.mode | money }}</td><td class="num">{{ stats.words.mode | n0 }}</td><td class="num">{{ stats.tokens.mode | n0 }}</td></tr>
   </tbody>
 </table></div>
-<p class="note"><b>Note:</b> Words and Est. Tokens cover only the chat transcript text (your prompts and the agent's visible replies).
-They do <b>not</b> include the background agent work (programming, tool calls, testing) that the credits actually paid for,
-so they understate the real tokens used.</p>
+<ul class="note">
+  <li><b>Turns</b> — one turn is one exchange: a message you send plus the agent's reply to it. A chat is made of many turns.</li>
+  <li><b>Time Spent</b> — the wall-clock time the agent spent working on your turns (thinking, writing code, running tools and tests), summed across every turn. It is the agent's run time, not how long you had the chat open.</li>
+  <li><b>Words</b> — the word count of the chat transcript only: your prompts and the agent's visible replies.
+    For scale, {{ stats.words.total | n0 }} words is about
+    {{ (stats.words.total / 206052) | n2 }}× the length of <i>Moby-Dick</i> (~206,052 words).</li>
+  <li><b>Est. Tokens</b> — words × {{ settings.tpw }}, an estimate of the tokens in that transcript text.</li>
+</ul>
+<p class="note"><b>Note:</b> Words and Est. Tokens cover only the chat transcript text. They do <b>not</b> include the background
+agent work (programming, tool calls, testing) that the credits actually paid for, so they understate the real tokens used.</p>
