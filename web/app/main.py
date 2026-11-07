@@ -40,6 +40,20 @@ templates.env.filters["money"] = lambda v: f"${(v or 0):,.2f}"
 templates.env.filters["mins"] = lambda s: "<1" if 0 < (s or 0) < 60 else f"{(s or 0) / 60:,.0f}"
 
 
+@app.middleware("http")
+async def _cache_control(request: Request, call_next):
+    """Never let a proxy/CDN cache dynamic pages: a cached response can drop the
+    Set-Cookie on login/setup, which makes the submit buttons look dead (the form
+    posts but the session cookie never sticks). Static assets are versioned, so
+    they may be cached."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        resp.headers.setdefault("Cache-Control", "public, max-age=86400")
+    else:
+        resp.headers["Cache-Control"] = "no-store, private"
+    return resp
+
+
 class LoginRequired(Exception):
     pass
 
