@@ -1,5 +1,10 @@
-<div class="scroll"><table class="grid dive">
-  <thead><tr><th>Date</th><th>Context</th><th class="num">Words</th><th class="num">Est. Tokens</th><th class="num">Run time</th><th class="num">Credits</th><th class="num">USD</th></tr></thead>
+<div class="divewrap"><table class="grid dive">
+  <thead>
+    {% if with_name %}<tr class="proj-row"><th colspan="7"><a href="/project/{{ p.slug }}">{{ p.name }}</a> <span class="muted small">({{ p.size_h }}, created {{ p.created_date }})</span></th></tr>{% endif %}
+    <tr class="cols"><th>Date</th><th>Context</th><th class="num">Words</th><th class="num">Est. Tokens</th><th class="num">Run time</th><th class="num">Credits</th><th class="num">USD</th></tr>
+    <tr class="total-row"><td colspan="2">PROJECT TOTALS ({{ p.turns }} turns)</td><td class="num">{{ p.words | n0 }}</td><td class="num">{{ p.tokens | n0 }}</td>
+      <td class="num">{{ p.runtime_secs | mins }} min</td><td class="num">{{ p.credits_i | n0 }}</td><td class="num">{{ p.usd | money }}</td></tr>
+  </thead>
   <tbody>
   {% for t in turns %}
   <tr>
@@ -14,6 +19,4 @@
   </tr>
   {% endfor %}
   </tbody>
-  <tfoot><tr><td colspan="2">PROJECT TOTALS ({{ p.turns }} turns)</td><td class="num">{{ p.words | n0 }}</td><td class="num">{{ p.tokens | n0 }}</td>
-    <td class="num">{{ p.runtime_secs | mins }} min</td><td class="num">{{ p.credits_i | n0 }}</td><td class="num">{{ p.usd | money }}</td></tr></tfoot>
 </table></div>

@@ -7,8 +7,8 @@
 <nav class="toc">{% for p, turns in blocks %}<a href="#{{ p.slug }}">{{ p.name }}</a>{% endfor %}</nav>
 {% for p, turns in blocks %}
 <section id="{{ p.slug }}">
-  <h2><a href="/project/{{ p.slug }}">{{ p.name }}</a> <span class="muted small">({{ p.size_h }}, created {{ p.created_date }})</span></h2>
   {% set show_chat = p.chats > 1 %}
+  {% set with_name = true %}
   {% include "_turns.html" %}
   <p class="small"><a href="#top">↑ back to top</a></p>
 </section>

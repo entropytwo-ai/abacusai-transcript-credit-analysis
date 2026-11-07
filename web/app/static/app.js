@@ -1,5 +1,15 @@
 // Sortable tables, "Sync now" button and sync-status polling. No dependencies.
 (function () {
+  // Keep --hdr in sync with the sticky site header's real height so the dive-in
+  // project headers lock flush beneath it (the header wraps on narrow screens).
+  var siteHeader = document.querySelector("header.top");
+  function setHdr() {
+    if (siteHeader) document.documentElement.style.setProperty("--hdr", siteHeader.offsetHeight + "px");
+  }
+  setHdr();
+  window.addEventListener("resize", setHdr);
+  window.addEventListener("load", setHdr);
+
   document.querySelectorAll("table.sortable").forEach(function (table) {
     table.querySelectorAll("thead th").forEach(function (th, col) {
       th.addEventListener("click", function () {

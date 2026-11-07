@@ -19,6 +19,17 @@ table.grid { border-collapse:collapse; width:100%; font-variant-numeric:tabular-
 .num { text-align:right !important; white-space:nowrap; font-family:ui-monospace, Menlo, Consolas, monospace; }
 .sortable th { cursor:pointer; user-select:none; } .sortable th.asc::after { content:" ▲"; } .sortable th.desc::after { content:" ▼"; }
 .dive td.ctx { min-width:340px; } .dive td.date { white-space:nowrap; }
+/* Dive-in: each project's whole header block (name + column headers + totals) locks
+   just below the site header while that project's turns scroll, then the next project's
+   block pushes it off and locks in turn. The wrapper must NOT create a vertical scroll
+   container or the sticky would anchor to it instead of the page. */
+.divewrap { border:1px solid var(--line); border-radius:6px; margin-bottom:1.2rem; }
+section { scroll-margin-top: calc(var(--hdr, 52px) + .4rem); }
+.dive thead { position:sticky; top:var(--hdr, 52px); z-index:3; background:#0f1a0f; }
+.dive thead th, .dive thead td { position:static; top:auto; }
+.dive thead tr.proj-row th { font-size:1.05rem; color:var(--hi); border-bottom:1px solid var(--line); }
+.dive thead tr.proj-row a { color:var(--hi); }
+.dive thead tr.total-row td { border-top:1px solid var(--line); border-bottom:2px solid var(--hi); }
 .clamp { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .you b { color:#ffd479; } .agent b { color:var(--link); } .agent { color:#b4d8b4; margin-top:.15rem; } .att { color:var(--muted); }
 .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:.8rem; margin:.5rem 0 1rem; }
