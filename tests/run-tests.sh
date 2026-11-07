@@ -92,6 +92,10 @@ for AWK_IMPL in "${AWKS[@]}"; do
     assert_not_contains "--top hides the rest" "$out" "notes-without-credits "
     assert_contains  "--top keeps full TOTAL" "$out" "1,255,787"
 
+    out=$(run -cn1 -scredits "$FIX")
+    assert_eq        "attached values (-cn1 -scredits)" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" 3
+    assert_contains  "attached sort value applied" "$out" '"xtree project-abacusai-transcript"'
+
     out=$(run --rate 20 -c "$FIX" | tail -n 1)
     assert_eq        "--rate 20 doubles USD" "$out" '"TOTAL",619,"619 B",1255787,2511.57'
     out=$(run --rate 12.5 "$FIX")

@@ -196,7 +196,7 @@ Exit status: `0` success, `1` no transcript files found, `2` usage error.
 | `-V`, `--version` | Print version. |
 | `-h`, `--help` | Show help. |
 
-You can combine short flags (`-dw`, `-cs credits-desc`) and write long options as `--sort=size`.
+You can combine short flags (`-dw`, `-cs credits-desc`), attach values (`-n5`, `-scredits`) and write long options as `--sort=size`.
 
 `date` sorting uses a `YYYY-MM-DD` date in the filename if there is one, and the file modification time otherwise.
 
