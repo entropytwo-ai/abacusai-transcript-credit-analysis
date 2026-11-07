@@ -183,6 +183,13 @@ def test_web_flow(fresh, monkeypatch):
     assert csv_text.splitlines()[-1].startswith("TOTAL,")
     assert c.get("/export/dive.csv").text.startswith("Filename,FileSizeBytes,TopicSummary,WordCount,EstTokens,Credits,USD")
 
+    # PDF exports (dashboard + dive): real PDF bytes with the right content type
+    for path in ("/export/summary.pdf", "/export/dive.pdf"):
+        r = c.get(path)
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "application/pdf"
+        assert r.content[:4] == b"%PDF" and len(r.content) > 1000
+
     # sharing: owner adds a viewer, viewer can read but not administer
     csrf = page_csrf(c.get("/admin/users").text)
     assert c.post("/admin/users/add", data={"username": "friend"}).status_code == 400   # no csrf

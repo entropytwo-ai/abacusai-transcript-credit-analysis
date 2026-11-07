@@ -9,7 +9,7 @@
   <div class="card"><div class="k">Projects / chats / turns</div><div class="v">{{ total.files }} / {{ total.chats }} / {{ total.turns }}</div></div>
   <div class="card"><div class="k">Agent run time</div><div class="v">{{ (total.runtime_secs / 3600) | n2 }} h</div></div>
 </div>
-<p class="actions"><a class="btn" href="/export/summary.csv?sort={{ sort }}">Download CSV</a> <a class="btn" href="/export/dive.csv">Download dive CSV</a>
+<p class="actions"><a class="btn" href="/export/summary.csv?sort={{ sort }}">Download CSV</a> <a class="btn" href="/export/summary.pdf?sort={{ sort }}">Download PDF</a> <a class="btn" href="/export/dive.csv">Download dive CSV</a> <a class="btn" href="/export/dive.pdf?sort={{ sort }}">Download dive PDF</a>
 <span class="muted">Click a column heading to sort.</span></p>
 <div class="scroll"><table class="grid sortable" id="summary">
   <thead><tr>
@@ -17,6 +17,11 @@
     <th class="num" data-type="num">Chats</th><th class="num" data-type="num">Turns</th>
     <th class="num" data-type="num">Text Size</th><th class="num" data-type="num">Words</th><th class="num" data-type="num">Est. Tokens</th>
     <th class="num" data-type="num">Total Credits</th><th class="num" data-type="num">USD Value</th>
+  </tr>
+  <tr class="total-row">
+    <td>TOTAL</td><td></td><td></td><td class="num">{{ total.chats }}</td><td class="num">{{ total.turns }}</td>
+    <td class="num">{{ total.size_h }}</td><td class="num">{{ total.words | n0 }}</td><td class="num">{{ total.tokens | n0 }}</td>
+    <td class="num">{{ total.credits | n0 }}</td><td class="num">{{ total.usd | money }}</td>
   </tr></thead>
   <tbody>
   {% for r in rows %}
@@ -35,11 +40,6 @@
   <tr><td colspan="10" class="muted">No data yet. {% if user.role == 'owner' %}Press <b>Sync now</b>.{% endif %}</td></tr>
   {% endfor %}
   </tbody>
-  <tfoot><tr>
-    <td>TOTAL</td><td></td><td></td><td class="num">{{ total.chats }}</td><td class="num">{{ total.turns }}</td>
-    <td class="num">{{ total.size_h }}</td><td class="num">{{ total.words | n0 }}</td><td class="num">{{ total.tokens | n0 }}</td>
-    <td class="num">{{ total.credits | n0 }}</td><td class="num">{{ total.usd | money }}</td>
-  </tr></tfoot>
 </table></div>
 {% include "_stats.html" %}
 {% if daily %}

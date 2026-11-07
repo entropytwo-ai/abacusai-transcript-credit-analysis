@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, db, report, sync
+from . import auth, db, pdf, report, sync
 
 __version__ = "1.0.0"
 HERE = Path(__file__).resolve().parent
@@ -213,6 +213,23 @@ def export_dive(user=Depends(user_of), con=Depends(get_con)):
                         int(t["runtime_secs"] or 0)])
     return _csv(out, ["Filename", "FileSizeBytes", "TopicSummary", "WordCount", "EstTokens", "Credits", "USD",
                       "Date", "Chat", "AgentSummary", "AgentRuntimeSecs"], "credit-dive.csv")
+
+
+def _pdf(data: bytes, filename: str):
+    return Response(data, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@app.get("/export/summary.pdf")
+def export_summary_pdf(sort: str = "credits-desc", user=Depends(user_of), con=Depends(get_con)):
+    return _pdf(pdf.summary_pdf(_summary_ctx(con, sort)), "credit-summary.pdf")
+
+
+@app.get("/export/dive.pdf")
+def export_dive_pdf(sort: str = "credits-desc", user=Depends(user_of), con=Depends(get_con)):
+    rows = report.projects(con, sort)
+    blocks = [(p, report.project_turns(con, p["id"])) for p in rows]
+    return _pdf(pdf.dive_pdf(blocks, report.totals(rows, con), report.settings(con)), "credit-dive.pdf")
 
 
 # ------------------------------------------------------------------ sync

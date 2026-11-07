@@ -3,7 +3,7 @@
 {% block content %}
 {% include "_syncbar.html" %}
 <h1>Dive-in: all projects</h1>
-<p class="muted">{{ total.files }} projects · {{ total.credits | n0 }} credits · {{ total.usd | money }}. <a href="/export/dive.csv">Download dive CSV</a></p>
+<p class="muted">{{ total.files }} projects · {{ total.credits | n0 }} credits · {{ total.usd | money }}. <a href="/export/dive.csv">Download dive CSV</a> · <a href="/export/dive.pdf?sort={{ sort }}">Download dive PDF</a></p>
 <nav class="toc">{% for p, turns in blocks %}<a href="#{{ p.slug }}">{{ p.name }}</a>{% endfor %}</nav>
 {% for p, turns in blocks %}
 <section id="{{ p.slug }}">

@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- PDF exports for the dashboard (`/export/summary.pdf`) and the dive-in view (`/export/dive.pdf`), with **Download PDF** / **Download dive PDF** buttons next to the CSV ones. Built with `fpdf2` (pure Python, no system libraries) so a fresh install keeps working.
+
+### Changed
+- The summary table's **TOTAL** row now sits at the top of the data (just under the column headings) instead of the bottom, and the summary PDF matches.
+
 ## [Web 1.0.0] - 2026-11-07
 
 ### Added

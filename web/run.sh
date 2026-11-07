@@ -15,7 +15,7 @@ if [[ ! -x .venv/bin/python ]]; then
     echo "==> creating virtualenv"
     "$PY" -m venv .venv || { echo "error: python3 -m venv failed (Debian/Ubuntu: apt install python3-venv)" >&2; exit 1; }
 fi
-if ! .venv/bin/python -c 'import fastapi, uvicorn, jinja2, itsdangerous, multipart, abacusai' 2>/dev/null \
+if ! .venv/bin/python -c 'import fastapi, uvicorn, jinja2, itsdangerous, multipart, fpdf, abacusai' 2>/dev/null \
    || [[ requirements.txt -nt .venv/.installed ]]; then
     echo "==> installing requirements"
     .venv/bin/pip install -q --upgrade pip
