@@ -51,7 +51,7 @@ More choices are in [Installation](#installation).
 
 - **Summary table**: one row per transcript with file size, total credits and USD value, plus a **TOTAL** row.
 - **Statistics**: mean, median and mode credits (and USD) across all transcripts.
-- **Dive-in mode** (`-d`): each transcript split into steps. Every row is labelled with the prompt and the file or artifact it touched (for example `[README.md] Clickable table of contents...`), followed by credits and USD for that step and the **PROJECT TOTALS**.
+- **Dive-in mode** (`-d`): each transcript split into steps. Every row is labelled with the prompt you typed for that turn, with any attachment in brackets (for example `[image (1).png] Something seems broken now...`), followed by credits and USD for that step and the **PROJECT TOTALS**.
 - **Word counts** (`-w`): how much text went into each step or transcript.
 - **CSV export** (`-c`): summary or dive data ready for a spreadsheet.
 - **Sorting** (`-s`): by filename, credits, size or date. **Top N** (`-n`) for the most expensive projects.
@@ -260,7 +260,18 @@ FilenameNoExt,FileSizeBytes,FileSizeHuman,TotalCredits,USDValue
 
 - Every line containing `Credits:` followed by a number (for example `Credits: 1,653` or `Credits: ~502`) adds that number to the transcript total.
 - Only the number right after the label counts. `Credits: 1,653 (about $1.65)` gives 1,653, not 1,653,165.
-- In dive mode, each `Credits:` line closes a step. The step is labelled from the text before it: the first real prompt line, plus the nearest file or artifact name in brackets. UI noise such as `Copy`, `Thought for 12s` or code-fence markers is ignored.
+- In dive mode, each `Credits:` line closes a step, and the step is labelled with **the prompt you typed** for it. A saved Abacus.AI chat lays out each turn like this:
+  ```text
+  AG                        <- your initials
+  image (1).png             <- optional attachment (shown as [image (1).png])
+  Make it support NixOS...  <- your prompt  -> used as the label
+  4:24 PM
+  Abacus AI Agent
+  ...agent work...
+  Credits: 645
+  ```
+  If a turn was cancelled and re-sent, the credits go to the last prompt before the `Credits:` line. For text without this layout (for example the very first turn, which has no timestamp), the label falls back to a heuristic: the first real line plus the nearest file or artifact name in brackets. UI noise such as `Copy`, `Thought for 12s` or code-fence markers is ignored.
+- Long labels are cut on character boundaries, so UTF-8 text such as `✔` never breaks and columns stay aligned. CSV output keeps up to 60 characters.
 - USD = credits × rate ÷ 10,000. Totals are computed from exact credits, not from rounded row values.
 - Mode is the most frequent per-transcript total. If several values tie, the smallest one is shown.
 

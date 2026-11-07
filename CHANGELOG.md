@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-07
+
+### Changed
+- Dive-mode labels now use the prompt you typed for each turn. The scanner recognises the real Abacus.AI transcript layout (initials, prompt, timestamp, `Abacus AI Agent`, ..., `Credits:`). Before, rows were often labelled `[AG] ...`, `Abacus AI Agent`, `[logout] ...` or `[Running] ...` from the agent's own output. Other text still uses the old heuristic.
+- Attachment names that contain spaces (`image (1).png`) are shown in brackets.
+
+### Fixed
+- Long labels could be cut in the middle of a multi-byte UTF-8 character, and non-ASCII text knocked the table columns out of line.
+
+### Added
+- Test fixture in the real transcript format (`tests/fixtures-real/`) with golden table and CSV output.
+
 ## [1.0.0] - 2026-11-07
 
 First packaged release. Based on the original single-file `credit-scanner.sh`.

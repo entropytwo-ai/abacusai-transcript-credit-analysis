@@ -12,7 +12,7 @@
       packages = forAll (pkgs: {
         default = pkgs.stdenvNoCC.mkDerivation {
           pname = "credit-scanner";
-          version = "1.0.0";
+          version = "1.1.0";
           src = ./.;
           nativeBuildInputs = [ pkgs.makeWrapper ];
           dontBuild = true;

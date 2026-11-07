@@ -1,6 +1,7 @@
 # Your own transcripts and exports (keep them out of the repo)
 *-abacusai-transcript.txt
 !tests/fixtures/*
+!tests/fixtures-real/*
 *.csv
 !tests/expected/*.csv
 !tests/fixtures/*.csv

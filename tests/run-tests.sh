@@ -58,6 +58,18 @@ fi
 for AWK_IMPL in "${AWKS[@]}"; do
     echo "=== awk implementation: $AWK_IMPL"
 
+    # Real Abacus.AI transcript layout: initials / prompt / time / "Abacus AI Agent" / ... / Credits
+    real="$HERE/fixtures-real/real-format-project-abacusai-transcript.txt"
+    out=$(run -d "$real")
+    assert_golden    "real-format dive labels use the user prompt" "$out" "$EXP/real-dive.txt"
+    assert_not_contains "real-format: no agent-name labels" "$out" "Abacus AI Agent"
+    assert_not_contains "real-format: no initials labels" "$out" "[AG]"
+    assert_contains  "real-format: attachment with spaces bracketed" "$out" "[image (1).png] It mostly works"
+    assert_contains  "real-format: cancelled turn -> last prompt" "$out" "OK, getting this: ✔ nixos-rebuild"
+    assert_contains  "real-format: totals" "$out" "4,669"
+    out=$(run -dc "$real")
+    assert_golden    "real-format dive CSV" "$out" "$EXP/real-dive.csv"
+
     out=$(run "$FIX"); rc=$?
     assert_eq        "summary exits 0" "$rc" 0
     assert_golden    "summary table matches golden output" "$out" "$EXP/summary.txt"
