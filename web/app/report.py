@@ -1,9 +1,40 @@
 """Report data: the same numbers credit-scanner.sh prints, built from the database."""
 import json
 from collections import Counter
+from datetime import datetime, timezone
 from statistics import median
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from . import briefs, db
+
+_UTC = timezone.utc
+
+
+def _zone(con):
+    name = (db.get_setting(con, "display_tz") or "America/New_York").strip()
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("America/New_York")
+
+
+def local_dt(iso: str, zone):
+    """Parse a stored ISO timestamp (UTC) and return it as an aware datetime in `zone`."""
+    if not iso:
+        return None
+    try:
+        dt = datetime.fromisoformat(iso)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=_UTC)
+    return dt.astimezone(zone)
+
+
+def local_date(iso: str, zone) -> str:
+    """Date (YYYY-MM-DD) of a stored UTC timestamp, in the display timezone."""
+    dt = local_dt(iso, zone)
+    return dt.strftime("%Y-%m-%d") if dt else ""
 
 
 def human_size(n: int) -> str:
@@ -37,6 +68,7 @@ def usd(credits: float, rate: float) -> float:
 
 def projects(con, sort: str = "credits-desc") -> list:
     s = settings(con)
+    zone = _zone(con)
     rows = con.execute("""
         SELECT p.id, p.slug, p.name, p.extra,
                COUNT(DISTINCT c.id)              AS chats,
@@ -58,8 +90,8 @@ def projects(con, sort: str = "credits-desc") -> list:
         d["tokens"] = est_tokens(d["words"], s["tpw"])
         d["usd"] = usd(d["credits_i"], s["rate"])
         d["size_h"] = human_size(d["text_bytes"])
-        d["created_date"] = (d["created"] or "")[:10]
-        d["last_date"] = (d["last_activity"] or "")[:10]
+        d["created_date"] = local_date(d["created"], zone)
+        d["last_date"] = local_date(d["last_activity"], zone)
         d["extra"] = json.loads(d["extra"] or "{}")
         out.append(d)
     keys = {
@@ -100,6 +132,7 @@ def statistics(rows: list, con) -> dict:
 
 def project_turns(con, project_id: int) -> list:
     s = settings(con)
+    zone = _zone(con)
     terms = db.redact_terms(con)
     rows = con.execute("""
         SELECT t.*, c.name AS chat_name FROM turns t JOIN conversations c ON c.id = t.conversation_id
@@ -111,16 +144,22 @@ def project_turns(con, project_id: int) -> list:
         d["tokens"] = est_tokens(d["words"], s["tpw"])
         d["credits_i"] = int(round(d["credits"]))
         d["usd"] = usd(d["credits"], s["rate"])
-        d["date"] = (d["bot_ts"] or d["user_ts"] or "")[:10]
+        d["date"] = local_date(d["bot_ts"] or d["user_ts"], zone)
         d["attachments"] = [briefs.scrub(a, terms) for a in json.loads(d["attachments"] or "[]")]
         out.append(d)
     return out
 
 
 def daily(con) -> list:
-    """Credits per UTC day across included chats (for the chart)."""
-    return [dict(r) for r in con.execute("""
-        SELECT substr(t.bot_ts, 1, 10) AS day, SUM(t.credits) AS credits FROM turns t
+    """Credits per day (in the display timezone) across included chats (for the chart)."""
+    zone = _zone(con)
+    rows = con.execute("""
+        SELECT t.bot_ts AS bot_ts, t.credits AS credits FROM turns t
         JOIN conversations c ON c.id = t.conversation_id
-        WHERE c.excluded = 0 AND c.project_id IS NOT NULL AND t.bot_ts != ''
-        GROUP BY day ORDER BY day""")]
+        WHERE c.excluded = 0 AND c.project_id IS NOT NULL AND t.bot_ts != ''""").fetchall()
+    agg = Counter()
+    for r in rows:
+        day = local_date(r["bot_ts"], zone)
+        if day:
+            agg[day] += r["credits"] or 0
+    return [{"day": day, "credits": agg[day]} for day in sorted(agg)]

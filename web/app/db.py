@@ -80,6 +80,7 @@ DEFAULT_SETTINGS = {
     "brief_llm": "GEMINI_3_5_FLASH_LITE",
     "redact_terms": "[]",          # JSON list of extra words/names to scrub from excerpts
     "sync_hour_utc": "8",          # daily sync runs after this hour (UTC)
+    "display_tz": "America/New_York",  # timezone for dates shown on the site (IANA name)
 }
 
 _lock = threading.RLock()
