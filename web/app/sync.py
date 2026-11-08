@@ -307,10 +307,17 @@ def scheduler_loop(stop: threading.Event, interval: int = 600) -> None:
 
 
 def status() -> dict:
+    from . import report
     con = db.connect()
     row = con.execute("SELECT * FROM sync_runs ORDER BY id DESC LIMIT 1").fetchone()
     ok = con.execute("SELECT finished_at FROM sync_runs WHERE status='ok' ORDER BY id DESC LIMIT 1").fetchone()
+    last_ok = ok["finished_at"] if ok else None
+    last_ok_local = ""
+    if last_ok:
+        d = report.local_dt(last_ok, report._zone(con))
+        if d:
+            last_ok_local = d.strftime("%Y-%m-%d %H:%M %Z")
     con.close()
     return {"running": _state["running"],
             "last_run": dict(row) if row else None,
-            "last_ok": ok["finished_at"] if ok else None}
+            "last_ok": last_ok, "last_ok_local": last_ok_local}

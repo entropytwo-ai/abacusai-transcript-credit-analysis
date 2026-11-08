@@ -1,7 +1,7 @@
 <div class="syncbar" id="syncbar">
   <span id="sync-text">
   {% if sync.running %}Sync running…
-  {% elif sync.last_ok %}Last synced {{ sync.last_ok[:16].replace('T', ' ') }} UTC
+  {% elif sync.last_ok %}Last synced {{ sync.last_ok_local or (sync.last_ok[:16].replace('T', ' ') + ' UTC') }}
   {% else %}Not synced yet{% endif %}
   {% if sync.last_run and sync.last_run.status == 'error' %}<span class="err"> · last sync failed: {{ sync.last_run.message }}</span>{% endif %}
   </span>
