@@ -7,7 +7,7 @@
   <div class="card"><div class="k">Total credits</div><div class="v">{{ total.credits | n0 }}</div></div>
   <div class="card"><div class="k">USD value</div><div class="v">{{ total.usd | money }}</div></div>
   <div class="card"><div class="k">Projects / chats / turns</div><div class="v">{{ total.files }} / {{ total.chats }} / {{ total.turns }}</div></div>
-  <div class="card"><div class="k">Agent run time</div><div class="v">{{ (total.runtime_secs / 3600) | n2 }} h</div></div>
+  <div class="card"><div class="k">Agent run time</div><div class="v">{{ total.runtime_secs | dur }}</div></div>
 </div>
 <p class="actions"><a class="btn" href="/export/summary.csv?sort={{ sort }}">Download CSV</a> <a class="btn" href="/export/summary.pdf?sort={{ sort }}">Download PDF</a> <a class="btn" href="/export/dive.csv">Download dive CSV</a> <a class="btn" href="/export/dive.pdf?sort={{ sort }}">Download dive PDF</a>
 <span class="muted">Click a column heading to sort.</span></p>
