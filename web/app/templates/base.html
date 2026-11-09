@@ -15,6 +15,7 @@
   <nav>
     <a href="/">Summary</a>
     <a href="/dive">Dive-in</a>
+    <a href="/calendar">Calendar</a>
     {% if user.role == 'owner' %}<a href="/admin/projects">Projects</a><a href="/admin/users">Sharing</a><a href="/admin/settings">Settings</a>{% endif %}
     <a href="/account">{{ user.username }}</a>
     <form method="post" action="/logout" class="inline"><button class="link">Log out</button></form>

@@ -110,3 +110,34 @@ b.sched { color:var(--link); }
 .toc { display:flex; flex-wrap:wrap; gap:.3rem .9rem; margin:.5rem 0 1rem; font-size:.9rem; }
 tr.excluded td { opacity:.55; } .assign .newname { width:11rem; }
 @media (max-width:700px) { main { padding:.6rem; } .grid th, .grid td { padding:.35rem .4rem; font-size:.85rem; } .dive td.ctx { min-width:240px; } }
+
+
+/* Calendar: per-day credit & $ usage by project */
+.calnav { display:flex; align-items:center; gap:.8rem; margin:.3rem 0 .9rem; }
+.calnav .calmonth { color:var(--hi); font:700 1.15rem ui-monospace, Menlo, Consolas, monospace; min-width:11rem; text-align:center; }
+.calnav .btn.small.disabled { opacity:.35; pointer-events:none; }
+.calwrap { overflow-x:auto; border:1px solid var(--line); border-radius:6px; }
+.calgrid { display:grid; grid-template-columns:repeat(7, minmax(135px, 1fr)); min-width:960px; }
+.calhead { background:#0f1a0f; color:var(--hi); font-weight:600; font-size:.8rem; text-align:center; padding:.35rem; border-bottom:1px solid var(--line); border-right:1px solid var(--line); }
+.calhead:nth-child(7n) { border-right:0; }
+.calcell { border-bottom:1px solid var(--line); border-right:1px solid var(--line); min-height:118px; padding:.3rem .35rem; background:var(--panel); display:flex; flex-direction:column; gap:.25rem; }
+.calcell:nth-child(7n) { border-right:0; }
+.calcell.empty { background:#0c110c; }
+.calcell.blank { background:#0e140e; }
+.calcell.today { outline:2px solid var(--hi); outline-offset:-2px; }
+.calcelltop { display:flex; align-items:baseline; justify-content:space-between; gap:.4rem; }
+.caldom { color:var(--muted); font-size:.8rem; font-weight:600; }
+.calcell.today .caldom { color:var(--hi); }
+.caltot { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.74rem; color:var(--fg); white-space:nowrap; text-align:right; }
+.caltot b { color:var(--hi); }
+.calprojs { display:flex; flex-direction:column; gap:1px; max-height:150px; overflow-y:auto; }
+.calproj { display:flex; align-items:center; gap:.3rem; font-size:.74rem; line-height:1.3; }
+.caldot { flex:none; width:9px; height:9px; border-radius:50%; display:inline-block; }
+.calname { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--fg); }
+.calnum { flex:none; font-family:ui-monospace, Menlo, Consolas, monospace; color:var(--hi); }
+.calusd { flex:none; font-family:ui-monospace, Menlo, Consolas, monospace; color:var(--muted); min-width:3.4rem; text-align:right; }
+.callegend { display:flex; flex-wrap:wrap; gap:.4rem .7rem; }
+.calleg { display:flex; align-items:center; gap:.35rem; background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:.25rem .55rem; font-size:.82rem; color:var(--fg); }
+.calleg:hover { background:#101c10; text-decoration:none; border-color:var(--hi); }
+.calleg .calname { flex:none; max-width:14rem; }
+.calleg .calnum { color:var(--hi); }

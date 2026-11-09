@@ -173,6 +173,134 @@ def daily(con) -> list:
     return [{"day": day, "credits": agg[day]} for day in sorted(agg)]
 
 
+def _project_color(i: int, n: int) -> str:
+    """A distinct color per project, spread around the hue wheel; readable on the dark bg."""
+    hue = (i * 360.0 / max(n, 1)) % 360
+    return "hsl(%d 65%% 62%%)" % int(hue)
+
+
+def calendar_months(con) -> list:
+    """Sorted list of 'YYYY-MM' months that have any credit usage (display timezone)."""
+    zone = _zone(con)
+    rows = con.execute("""
+        SELECT t.bot_ts AS bot_ts FROM turns t
+        JOIN conversations c ON c.id = t.conversation_id
+        WHERE c.excluded = 0 AND c.project_id IS NOT NULL AND t.bot_ts != ''""").fetchall()
+    months = set()
+    for r in rows:
+        d = local_date(r["bot_ts"], zone)
+        if d:
+            months.add(d[:7])
+    return sorted(months)
+
+
+def calendar_data(con, month: str | None = None) -> dict:
+    """Credit and USD usage per day for one month, broken down by project, laid out as a
+    calendar grid (Sunday-first). USD per day is valued at the cost that was in effect on
+    that day (as-incurred), matching the valuation band. `month` is 'YYYY-MM'."""
+    import calendar as _cal
+    from datetime import date as _date
+    zone = _zone(con)
+    cur_rate = settings(con)["rate"]
+    sched = rate_schedule(con)
+
+    # Stable color + ordering per project (by total credits across all time).
+    pj = {r["id"]: {"name": r["name"], "slug": r["slug"], "total": r["credits"]}
+          for r in projects(con, "credits-desc")}
+    order = list(pj.keys())                        # already credits-desc
+    n = len(order)
+    color = {pid: _project_color(i, n) for i, pid in enumerate(order)}
+
+    # Per-day, per-project credit totals.
+    rows = con.execute("""
+        SELECT c.project_id AS pid, t.bot_ts AS bot_ts, t.credits AS credits FROM turns t
+        JOIN conversations c ON c.id = t.conversation_id
+        WHERE c.excluded = 0 AND c.project_id IS NOT NULL AND t.bot_ts != ''""").fetchall()
+    byday: dict = {}
+    for r in rows:
+        d = local_date(r["bot_ts"], zone)
+        if not d:
+            continue
+        slot = byday.setdefault(d, {})
+        slot[r["pid"]] = slot.get(r["pid"], 0.0) + (r["credits"] or 0)
+
+    months = calendar_months(con)
+    today = datetime.now(zone).date()
+    if month not in months and months:
+        month = months[-1]                         # default: latest month with data
+    if not month:
+        month = today.strftime("%Y-%m")
+    y, m = int(month[:4]), int(month[5:7])
+
+    def rate_for(day: str) -> float:
+        return _rate_at(sched, day, cur_rate)
+
+    # Build the day cells for this month.
+    cells = {}
+    present = set()
+    for d, slot in byday.items():
+        if d[:7] != month:
+            continue
+        rate = rate_for(d)
+        items = []
+        for pid, cr in slot.items():
+            if pid not in pj:
+                continue
+            present.add(pid)
+            items.append({"pid": pid, "name": pj[pid]["name"], "slug": pj[pid]["slug"],
+                          "color": color[pid], "credits": int(round(cr)),
+                          "usd": usd(cr, rate)})
+        items.sort(key=lambda x: x["credits"], reverse=True)
+        tot_cr = sum(i["credits"] for i in items)
+        cells[d] = {"credits": tot_cr, "usd": usd(sum(slot.values()), rate), "projects": items}
+
+    _cal.setfirstweekday(_cal.SUNDAY)
+    weeks = []
+    for wk in _cal.monthcalendar(y, m):
+        row = []
+        for dom in wk:
+            if dom == 0:
+                row.append(None)
+                continue
+            iso = "%04d-%02d-%02d" % (y, m, dom)
+            cell = cells.get(iso)
+            row.append({"dom": dom, "iso": iso, "is_today": iso == today.isoformat(),
+                        "credits": cell["credits"] if cell else 0,
+                        "usd": cell["usd"] if cell else 0.0,
+                        "projects": cell["projects"] if cell else []})
+        weeks.append(row)
+
+    # Month totals + per-project month totals (for the legend / summary).
+    mtot_cr = sum(c["credits"] for c in cells.values())
+    mtot_usd = sum(c["usd"] for c in cells.values())
+    legend = []
+    for pid in order:
+        if pid not in present:
+            continue
+        pcr = sum(sum(cr for p, cr in byday[d].items() if p == pid)
+                  for d in cells)  # credits this month for this project
+        legend.append({"name": pj[pid]["name"], "slug": pj[pid]["slug"],
+                       "color": color[pid], "credits": int(round(pcr))})
+    legend.sort(key=lambda x: x["credits"], reverse=True)
+
+    # Prev / next month navigation within the available range.
+    def shift(ym, delta):
+        yy, mm = int(ym[:4]), int(ym[5:7]) + delta
+        yy += (mm - 1) // 12
+        mm = (mm - 1) % 12 + 1
+        return "%04d-%02d" % (yy, mm)
+    prev_m, next_m = shift(month, -1), shift(month, 1)
+    lo, hi = (months[0], months[-1]) if months else (month, month)
+
+    return {"month": month, "label": _date(y, m, 1).strftime("%B %Y"),
+            "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+            "weeks": weeks, "legend": legend, "months": months,
+            "total_credits": mtot_cr, "total_usd": mtot_usd,
+            "prev": prev_m, "next": next_m,
+            "has_prev": prev_m >= lo, "has_next": next_m <= hi,
+            "has_data": bool(months)}
+
+
 def cost_history(con) -> dict:
     """Cost per 10,000 credits over time, as ready-to-render SVG geometry.
 

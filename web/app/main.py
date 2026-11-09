@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.11"
+__version__ = "1.0.12"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -38,6 +38,11 @@ templates.env.filters["n0"] = lambda v: f"{int(round(v or 0)):,}"
 templates.env.filters["n2"] = lambda v: f"{(v or 0):,.2f}"
 templates.env.filters["money"] = lambda v: f"${(v or 0):,.2f}"
 templates.env.filters["moneyd"] = lambda v: (f"+${v:,.2f}" if (v or 0) >= 0 else f"-${-v:,.2f}")
+templates.env.filters["kc"] = lambda v: (  # compact credit count for tight calendar cells
+    f"{(v or 0) / 1e6:.1f}M" if (v or 0) >= 1e6
+    else f"{(v or 0) / 1e3:.0f}k" if (v or 0) >= 1e4
+    else f"{(v or 0) / 1e3:.1f}k" if (v or 0) >= 1e3
+    else f"{int(v or 0)}")
 templates.env.filters["mins"] = lambda s: "<1" if 0 < (s or 0) < 60 else f"{(s or 0) / 60:,.0f}"
 
 
@@ -217,6 +222,13 @@ def dive_all(request: Request, sort: str = "credits-desc", user=Depends(user_of)
     blocks = [(p, report.project_turns(con, p["id"])) for p in rows]
     return render(request, "dive.html", user, blocks=blocks, total=report.totals(rows, con),
                   settings=report.settings(con), sync=sync.status(), sort=sort)
+
+
+@app.get("/calendar", response_class=HTMLResponse)
+def calendar_view(request: Request, month: str = "", user=Depends(user_of), con=Depends(get_con)):
+    db.apply_due_rates(con)
+    cal = report.calendar_data(con, month or None)
+    return render(request, "calendar.html", user, cal=cal, tz=report.tz_label(con), sync=sync.status())
 
 
 def _csv(rows, header, filename):

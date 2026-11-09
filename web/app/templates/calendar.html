@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block content %}
+{% include "_syncbar.html" %}
+<div class="h1row">
+  <h1>Credit &amp; $ usage calendar <span class="hdrnote">({{ tz }})</span></h1>
+</div>
+
+{% if not cal.has_data %}
+<p class="muted">No credit usage has been recorded yet.</p>
+{% else %}
+
+<div class="calnav">
+  {% if cal.has_prev %}<a class="btn small" href="/calendar?month={{ cal.prev }}">&larr; Prev</a>{% else %}<span class="btn small disabled">&larr; Prev</span>{% endif %}
+  <span class="calmonth">{{ cal.label }}</span>
+  {% if cal.has_next %}<a class="btn small" href="/calendar?month={{ cal.next }}">Next &rarr;</a>{% else %}<span class="btn small disabled">Next &rarr;</span>{% endif %}
+</div>
+
+<div class="cards">
+  <div class="card"><div class="k">Credits this month</div><div class="v">{{ cal.total_credits | n0 }}</div></div>
+  <div class="card"><div class="k">USD this month (as incurred)</div><div class="v">{{ cal.total_usd | money }}</div></div>
+</div>
+
+<div class="calwrap">
+  <div class="calgrid">
+    {% for wd in cal.weekdays %}<div class="calhead">{{ wd }}</div>{% endfor %}
+    {% for wk in cal.weeks %}{% for cell in wk %}
+      {% if cell is none %}
+      <div class="calcell empty"></div>
+      {% else %}
+      <div class="calcell{% if cell.is_today %} today{% endif %}{% if not cell.projects %} blank{% endif %}">
+        <div class="calcelltop">
+          <span class="caldom">{{ cell.dom }}</span>
+          {% if cell.projects %}<span class="caltot"><b>{{ cell.credits | kc }}</b> &middot; {{ cell.usd | money }}</span>{% endif %}
+        </div>
+        {% if cell.projects %}
+        <div class="calprojs">
+          {% for p in cell.projects %}
+          <div class="calproj" title="{{ p.name }} — {{ p.credits | n0 }} credits · {{ p.usd | money }}">
+            <span class="caldot" style="background:{{ p.color }}"></span>
+            <span class="calname">{{ p.name }}</span>
+            <span class="calnum">{{ p.credits | kc }}</span>
+            <span class="calusd">{{ p.usd | money }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}{% endfor %}
+  </div>
+</div>
+
+{% if cal.legend %}
+<h2>Projects this month</h2>
+<div class="callegend">
+  {% for p in cal.legend %}
+  <a class="calleg" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits this month">
+    <span class="caldot" style="background:{{ p.color }}"></span>
+    <span class="calname">{{ p.name }}</span>
+    <span class="calnum">{{ p.credits | n0 }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
