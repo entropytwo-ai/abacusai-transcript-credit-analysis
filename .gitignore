@@ -16,3 +16,6 @@ result-*
 .DS_Store
 .vscode/
 .idea/
+
+# Deployment config (lives on the computer running the site, not in the repo)
+deploy/
