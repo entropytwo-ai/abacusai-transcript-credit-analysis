@@ -35,6 +35,7 @@ Renaming a project to the name of another project merges them.</p>
   <tr><td>{{ p.slug }}</td><td><form method="post" action="/admin/projects/rename" class="row">
     <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="project_id" value="{{ p.id }}">
     <input name="name" value="{{ p.name }}" required><input name="notes" value="{{ p.notes or '' }}" placeholder="notes (shown on the project page)">
+    <input name="repo_url" value="{{ p.repo_url }}" placeholder="GitHub repo URL" class="newname" type="url">
     <button class="btn small">Save</button></form></td></tr>
   {% endfor %}
   </tbody>

@@ -98,6 +98,7 @@ def projects(con, sort: str = "credits-desc") -> list:
         d["created_date"] = local_date(d["created"], zone)
         d["last_date"] = local_date(d["last_activity"], zone)
         d["extra"] = json.loads(d["extra"] or "{}")
+        d["repo_url"] = (d["extra"].get("repo_url") or "").strip()
         out.append(d)
     keys = {
         "name": (lambda d: d["name"].lower(), False), "credits-desc": (lambda d: d["credits"], True),

@@ -28,7 +28,7 @@
   <tbody>
   {% for r in rows %}
   <tr>
-    <td><a href="/project/{{ r.slug }}">{{ r.name }}</a></td>
+    <td><a href="/project/{{ r.slug }}">{{ r.name }}</a>{% with repo_url = r.repo_url %} {% include "_ghlink.html" %}{% endwith %}</td>
     <td data-v="{{ r.created or '' }}">{{ r.created_date }}</td>
     <td data-v="{{ r.last_activity or '' }}">{{ r.last_date }}</td>
     <td class="num">{{ r.chats }}</td><td class="num">{{ r.turns }}</td>

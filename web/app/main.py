@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -286,7 +286,11 @@ def admin_projects(request: Request, msg: str = "", user=Depends(owner_of), con=
                (SELECT COALESCE(SUM(credits), 0) FROM turns t WHERE t.conversation_id = c.id) AS credits,
                (SELECT COUNT(*) FROM turns t WHERE t.conversation_id = c.id) AS turns
         FROM conversations c ORDER BY c.excluded, c.created_at DESC""").fetchall()
-    projects = con.execute("SELECT * FROM projects ORDER BY name").fetchall()
+    projects = []
+    for r in con.execute("SELECT * FROM projects ORDER BY name").fetchall():
+        d = dict(r)
+        d["repo_url"] = (json.loads(d.get("extra") or "{}").get("repo_url") or "").strip()
+        projects.append(d)
     return render(request, "admin_projects.html", user, convs=convs, projects=projects, msg=msg)
 
 
@@ -311,8 +315,8 @@ def admin_assign(conv_id: str = Form(...), project: str = Form(...), new_name: s
 
 
 @app.post("/admin/projects/rename")
-def admin_rename(project_id: int = Form(...), name: str = Form(...), notes: str = Form(""), csrf: str = Form(""),
-                 user=Depends(owner_of), con=Depends(get_con)):
+def admin_rename(project_id: int = Form(...), name: str = Form(...), notes: str = Form(""), repo_url: str = Form(""),
+                 csrf: str = Form(""), user=Depends(owner_of), con=Depends(get_con)):
     check_csrf(user, csrf)
     name = name.strip()
     if name:
@@ -322,7 +326,15 @@ def admin_rename(project_id: int = Form(...), name: str = Form(...), notes: str 
             con.execute("UPDATE conversations SET project_id = ? WHERE project_id = ?", (clash["id"], project_id))
             con.execute("DELETE FROM projects WHERE id = ?", (project_id,))
         else:
-            con.execute("UPDATE projects SET name = ?, slug = ?, notes = ? WHERE id = ?", (name, slug, notes, project_id))
+            row = con.execute("SELECT extra FROM projects WHERE id = ?", (project_id,)).fetchone()
+            extra = json.loads((row["extra"] if row else "") or "{}")
+            repo = repo_url.strip()
+            if repo:
+                extra["repo_url"] = repo
+            else:
+                extra.pop("repo_url", None)
+            con.execute("UPDATE projects SET name = ?, slug = ?, notes = ?, extra = ? WHERE id = ?",
+                        (name, slug, notes, json.dumps(extra), project_id))
     con.commit()
     return RedirectResponse("/admin/projects?msg=Saved", status_code=303)
 

@@ -3,7 +3,7 @@
 {% block content %}
 {% include "_syncbar.html" %}
 <p><a href="/">← Summary</a></p>
-<h1>Dive-in: {{ p.name }}</h1>
+<h1>Dive-in: {{ p.name }}{% with repo_url = p.repo_url %} {% include "_ghlink.html" %}{% endwith %}</h1>
 <p class="muted">Created {{ p.created_date }} · last activity {{ p.last_date }} · {{ p.size_h }} of chat text ·
 {{ chats | length }} chat{{ '' if chats | length == 1 else 's' }}: {% for c in chats %}{{ c.name }}{{ ', ' if not loop.last }}{% endfor %}</p>
 {% if p.notes %}<p>{{ p.notes }}</p>{% endif %}

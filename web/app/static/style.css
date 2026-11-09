@@ -61,6 +61,9 @@ ul.note li { margin:.3rem 0; }
 .actchart .yaxis i.h { writing-mode:horizontal-tb; transform:translateY(-50%); bottom:auto; left:1px; height:auto; }
 .actchart .gridlines { position:absolute; top:.5rem; left:.5rem; right:.5rem; bottom:.5rem; pointer-events:none; z-index:0; }
 .actchart .gridlines i.gl { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--line); opacity:.55; }
+.ghlink { display:inline-flex; vertical-align:middle; color:var(--muted); margin-left:.1rem; }
+.ghlink:hover { color:var(--hi); text-decoration:none; }
+.ghlink svg { display:block; }
 .toc { display:flex; flex-wrap:wrap; gap:.3rem .9rem; margin:.5rem 0 1rem; font-size:.9rem; }
 tr.excluded td { opacity:.55; } .assign .newname { width:11rem; }
 @media (max-width:700px) { main { padding:.6rem; } .grid th, .grid td { padding:.35rem .4rem; font-size:.85rem; } .dive td.ctx { min-width:240px; } }
