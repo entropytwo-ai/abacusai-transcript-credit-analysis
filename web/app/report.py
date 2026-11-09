@@ -145,6 +145,8 @@ def project_turns(con, project_id: int) -> list:
         d["credits_i"] = int(round(d["credits"]))
         d["usd"] = usd(d["credits"], s["rate"])
         d["date"] = local_date(d["bot_ts"] or d["user_ts"], zone)
+        _ts = local_dt(d["user_ts"] or d["bot_ts"], zone)
+        d["time"] = _ts.strftime("%H:%M") if _ts else ""
         d["attachments"] = [briefs.scrub(a, terms) for a in json.loads(d["attachments"] or "[]")]
         out.append(d)
     return out

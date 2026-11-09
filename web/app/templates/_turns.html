@@ -8,7 +8,7 @@
   <tbody>
   {% for t in turns %}
   <tr>
-    <td class="date">{{ t.date }}{% if show_chat %}<div class="muted small">{{ t.chat_name }}</div>{% endif %}</td>
+    <td class="date">{{ t.date }}{% if t.time %} <span class="muted small">{{ t.time }}</span>{% endif %}{% if show_chat %}<div class="muted small">{{ t.chat_name }}</div>{% endif %}</td>
     <td class="ctx">
       <div class="you clamp"><b>You:</b> {% if t.attachments %}<span class="att">[{{ t.attachments | join(', ') }}]</span> {% endif %}{{ t.user_brief or '(excerpt pending next sync)' }}</div>
       <div class="agent clamp"><b>Agent:</b> {{ t.agent_brief or '(excerpt pending next sync)' }}</div>
