@@ -5,10 +5,23 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
+- A **GitHub repo link** (small GitHub-mark icon) next to each project name on the summary dashboard, the all-projects dive-in, and each single project page. Repo URLs are editable from the Projects admin page (new **GitHub repo URL** field) and are stored per project in the database, which stays out of GitHub like the rest of your data.
+- An **Active times per day** chart on the dashboard and on each project dive-in: one dot per turn placed by the time of day you prompted (in the display timezone), with later-in-the-day times higher, hour marks every three hours, horizontal gridlines and vertical day separators.
+- **Time Spent** (agent run time) per project as a dashboard column, and **Turns** plus **Time Spent** added to the statistical summary, with a short explanation of Turns, Time Spent and Words (including a Moby-Dick scale reference for word counts).
+- The dive-in now shows the **turn time** (`HH:MM`, display timezone) next to each date.
 - PDF exports for the dashboard (`/export/summary.pdf`) and the dive-in view (`/export/dive.pdf`), with **Download PDF** / **Download dive PDF** buttons next to the CSV ones. Built with `fpdf2` (pure Python, no system libraries) so a fresh install keeps working.
 
 ### Changed
+- Dates are now shown in a **display timezone** (default `America/New_York`) instead of UTC, including the **Last synced** time, with the timezone shown in the column headings (e.g. `EST`/`EDT`).
+- The dive-in moves **project totals to the top** of each project; the per-project header sticks while you scroll and is replaced by the next project's header.
+- The summary shows agent run time as **`H M`** (e.g. `4h 9m`) instead of a decimal number of hours.
 - The summary table's **TOTAL** row now sits at the top of the data (just under the column headings) instead of the bottom, and the summary PDF matches.
+
+### Fixed
+- Dynamic responses are now sent with `no-store`, so the CDN in front of the always-on site can't cache and drop the login cookie.
+
+### Internal
+- Moved the CI workflow to `.github/workflows/github-actions-ci.yml` so GitHub Actions runs it.
 
 ## [Web 1.0.0] - 2026-11-07
 
