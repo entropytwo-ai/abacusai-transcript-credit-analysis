@@ -1,22 +1,38 @@
-{# Cost per 10,000 credits over time. A step line: flat between changes, stepping on each
-   recorded change, then flat to today at the current cost. Points come from rate_history. #}
+{# Cost per 10,000 credits over time. A sloped line (hills when the cost rises, valleys when
+   it falls) that holds flat to today at the current cost. The current price "rides" the line:
+   a marker + number at today that moves up/down as new slopes form. Pre-announced future
+   changes are drawn as a dashed slope projecting ahead. Geometry comes from report.cost_history. #}
 {% if cost %}
 <h2>Cost per 10,000 credits over time ({{ tz }})</h2>
-<p class="note">Current cost <b>${{ "%.2f"|format(cost.current) }}</b> per 10,000 credits{% if cost.changes %} &middot; <b>{{ "%+.1f"|format(cost.inflation_pct) }}%</b> vs the first recorded cost of ${{ "%.2f"|format(cost.first) }} ({{ cost.changes }} change{{ '' if cost.changes == 1 else 's' }} recorded){% else %} &middot; baseline recorded &mdash; the line steps up here whenever the cost changes{% endif %}.</p>
+<p class="note">Current cost <b>${{ "%.2f"|format(cost.current) }}</b> per 10,000 credits{% if cost.changes %} &middot; <b>{{ "%+.1f"|format(cost.inflation_pct) }}%</b> vs the first recorded cost of ${{ "%.2f"|format(cost.first) }} ({{ cost.changes }} change{{ '' if cost.changes == 1 else 's' }} recorded){% else %} &middot; baseline recorded &mdash; the line rides up or down from here whenever the cost changes{% endif %}{% if cost.sched_dots %} &middot; <b class="sched">{{ cost.sched_dots|length }} scheduled</b> ahead (dashed){% endif %}.</p>
 <div class="costchart">
   <svg viewBox="0 0 {{ cost.w }} {{ cost.h }}" role="img" aria-label="Cost per 10,000 credits over time">
     {% for g in cost.ygrid %}
     <line class="gl" x1="64" y1="{{ g.y }}" x2="{{ cost.w - 24 }}" y2="{{ g.y }}"></line>
     <text class="yl" x="58" y="{{ g.y + 4 }}" text-anchor="end">{{ g.label }}</text>
     {% endfor %}
+    {% if cost.has_proj %}
+    <line class="todayline" x1="{{ cost.today_x }}" y1="24" x2="{{ cost.today_x }}" y2="{{ cost.h - 44 }}"></line>
+    <text class="todaylbl" x="{{ cost.today_x }}" y="20" text-anchor="middle">today</text>
+    <path class="proj" d="{{ cost.proj }}" fill="none"></path>
+    {% for d in cost.sched_dots %}
+    <circle class="sd" cx="{{ d.x }}" cy="{{ d.y }}" r="5"><title>Scheduled {{ d.date }}: ${{ "%.2f"|format(d.rate) }} per 10,000 credits{% if d.note %} — {{ d.note }}{% endif %}</title></circle>
+    <text class="sl" x="{{ d.x }}" y="{{ d.y - 10 }}" text-anchor="middle">${{ "%.2f"|format(d.rate) }}</text>
+    {% endfor %}
+    {% endif %}
     <path class="cl" d="{{ cost.path }}" fill="none"></path>
     {% for d in cost.dots %}
     <circle class="cd" cx="{{ d.x }}" cy="{{ d.y }}" r="5"><title>{{ d.date }}: ${{ "%.2f"|format(d.rate) }} per 10,000 credits</title></circle>
     {% endfor %}
+    {% if cost.rider %}
+    <circle class="rider-ring" cx="{{ cost.rider.x }}" cy="{{ cost.rider.y }}" r="7"></circle>
+    <circle class="rider-dot" cx="{{ cost.rider.x }}" cy="{{ cost.rider.y }}" r="4"><title>Current cost: ${{ "%.2f"|format(cost.rider.rate) }} per 10,000 credits</title></circle>
+    <text class="rider-lbl" x="{{ cost.rider.lx }}" y="{{ cost.rider.ly }}" text-anchor="{{ cost.rider.anchor }}">${{ "%.2f"|format(cost.rider.rate) }}</text>
+    {% endif %}
     {% for x in cost.xlabels %}
     <text class="xl" x="{{ x.x }}" y="{{ cost.h - 16 }}" text-anchor="{{ x.anchor }}">{{ x.label }}</text>
     {% endfor %}
   </svg>
 </div>
-<p class="note">Abacus.AI does not publish a live price for credits, so this chart can&rsquo;t update on its own.{% if user.role == 'owner' %} When the credit cost changes, enter the new value in <a href="/admin/settings">Settings &rarr; Cost per 10,000 credits</a> and a dated point is added here automatically, building the inflation curve over time.{% else %} The owner records each new cost in Settings and a dated point is added here automatically.{% endif %}</p>
+<p class="note">Abacus.AI does not publish a live price for credits, so this chart can&rsquo;t update on its own.{% if user.role == 'owner' %} When the credit cost changes, enter the new value in <a href="/admin/settings">Settings &rarr; Cost per 10,000 credits</a> and a dated point is added here automatically. To pre-announce a rise, set a <a href="/admin/settings">scheduled change</a> with a future date &mdash; it shows as a dashed projection and switches on by itself on that day.{% else %} The owner records each new cost in Settings and a dated point is added here automatically; pre-announced changes show as a dashed projection until their effective date.{% endif %}</p>
 {% endif %}

@@ -74,7 +74,15 @@ CREATE TABLE IF NOT EXISTS rate_history (
     id         INTEGER PRIMARY KEY,
     changed_at TEXT NOT NULL,                 -- UTC ISO timestamp the cost took effect
     rate       REAL NOT NULL,                 -- USD per 10,000 credits
-    source     TEXT NOT NULL DEFAULT 'settings' -- initial | settings
+    source     TEXT NOT NULL DEFAULT 'settings' -- initial | settings | scheduled
+);
+CREATE TABLE IF NOT EXISTS scheduled_rates (
+    id             INTEGER PRIMARY KEY,
+    effective_date TEXT NOT NULL,             -- local (display tz) date YYYY-MM-DD the new cost starts
+    rate           REAL NOT NULL,             -- USD per 10,000 credits
+    note           TEXT DEFAULT '',
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    applied_at     TEXT                       -- set once promoted into rate_history
 );
 CREATE INDEX IF NOT EXISTS idx_turns_conv ON turns(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conv_project ON conversations(project_id);
@@ -119,6 +127,63 @@ def record_rate(con, rate: float, source: str = "settings") -> None:
     if last is None or abs(float(last["rate"]) - float(rate)) > 1e-9:
         con.execute("INSERT INTO rate_history(changed_at, rate, source) VALUES (datetime('now'), ?, ?)",
                     (float(rate), source))
+
+
+def _rate_str(rate: float) -> str:
+    """Compact text form of a rate for the settings value (no trailing zeros)."""
+    return ("%.6f" % float(rate)).rstrip("0").rstrip(".") or "0"
+
+
+def schedule_rate(con, effective_date: str, rate: float, note: str = "") -> None:
+    """Record a future cost change (pre-announced to customers). effective_date is a local
+    YYYY-MM-DD; it is applied automatically once that date arrives."""
+    con.execute("INSERT INTO scheduled_rates(effective_date, rate, note) VALUES (?, ?, ?)",
+                (effective_date, float(rate), (note or "").strip()))
+
+
+def scheduled_rates(con, pending_only: bool = True) -> list:
+    """Scheduled cost changes, soonest first. Pending = not yet applied."""
+    q = "SELECT id, effective_date, rate, note, applied_at FROM scheduled_rates"
+    if pending_only:
+        q += " WHERE applied_at IS NULL"
+    q += " ORDER BY effective_date, id"
+    return con.execute(q).fetchall()
+
+
+def delete_scheduled_rate(con, sid: int) -> None:
+    con.execute("DELETE FROM scheduled_rates WHERE id = ? AND applied_at IS NULL", (int(sid),))
+
+
+def apply_due_rates(con) -> int:
+    """Promote any scheduled cost changes whose effective date has arrived: record them into
+    rate_history (dated to the effective date) and make the latest the live rate. Returns the
+    number applied. Safe and cheap to call on every page load."""
+    from datetime import datetime, timezone
+    try:
+        from zoneinfo import ZoneInfo
+        zone = ZoneInfo(get_setting(con, "display_tz") or "UTC")
+    except Exception:
+        zone = timezone.utc
+    today = datetime.now(zone).date().isoformat()
+    due = con.execute("SELECT id, effective_date, rate FROM scheduled_rates "
+                      "WHERE applied_at IS NULL AND effective_date <= ? ORDER BY effective_date, id",
+                      (today,)).fetchall()
+    applied = 0
+    for row in due:
+        # Date the change to local noon on its effective date, stored as UTC, so it maps back
+        # to the same local date on the chart regardless of timezone offset.
+        d = datetime.fromisoformat(row["effective_date"]).replace(hour=12, minute=0, second=0, tzinfo=zone)
+        changed_at = d.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        last = con.execute("SELECT rate FROM rate_history ORDER BY changed_at DESC, id DESC LIMIT 1").fetchone()
+        if last is None or abs(float(last["rate"]) - float(row["rate"])) > 1e-9:
+            con.execute("INSERT INTO rate_history(changed_at, rate, source) VALUES (?, ?, 'scheduled')",
+                        (changed_at, float(row["rate"])))
+        con.execute("UPDATE scheduled_rates SET applied_at = datetime('now') WHERE id = ?", (row["id"],))
+        set_setting(con, "rate_usd_per_10k", _rate_str(row["rate"]))
+        applied += 1
+    if applied:
+        con.commit()
+    return applied
 
 
 def get_setting(con, key: str) -> str:

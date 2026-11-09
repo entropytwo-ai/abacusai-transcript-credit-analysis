@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.10"
+__version__ = "1.0.11"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -187,6 +187,7 @@ def _summary_ctx(con, sort):
 
 @app.get("/", response_class=HTMLResponse)
 def summary(request: Request, sort: str = "credits-desc", user=Depends(user_of), con=Depends(get_con)):
+    db.apply_due_rates(con)                 # switch on any pre-announced change whose date has arrived
     ctx = _summary_ctx(con, sort)
     ctx["valuation"] = report.valuation(con, ctx["rows"])
     days = report.daily(con)
@@ -390,9 +391,11 @@ def account(request: Request, user=Depends(user_of)):
 
 @app.get("/admin/settings", response_class=HTMLResponse)
 def admin_settings(request: Request, msg: str = "", user=Depends(owner_of), con=Depends(get_con)):
+    db.apply_due_rates(con)
     s = {k: db.get_setting(con, k) for k in db.DEFAULT_SETTINGS}
     s["redact_terms"] = "\n".join(db.redact_terms(con))
-    return render(request, "admin_settings.html", user, s=s, msg=msg)
+    scheduled = db.scheduled_rates(con, pending_only=True)
+    return render(request, "admin_settings.html", user, s=s, msg=msg, scheduled=scheduled)
 
 
 @app.post("/admin/settings")
@@ -414,3 +417,34 @@ def admin_settings_save(rate_usd_per_10k: float = Form(...), tokens_per_word: fl
     con.commit()
     return RedirectResponse("/admin/settings?msg=Saved" + (" (excerpts will be rewritten on the next sync)" if rebrief else ""),
                             status_code=303)
+
+
+@app.post("/admin/schedule")
+def admin_schedule_add(effective_date: str = Form(...), rate: float = Form(...), note: str = Form(""),
+                       csrf: str = Form(""), user=Depends(owner_of), con=Depends(get_con)):
+    check_csrf(user, csrf)
+    from datetime import datetime, timezone
+    try:
+        d = datetime.fromisoformat(effective_date.strip()).date()
+    except ValueError:
+        raise HTTPException(400, "Effective date must be YYYY-MM-DD")
+    try:
+        zone = report._zone(con)
+    except Exception:
+        zone = timezone.utc
+    if d <= datetime.now(zone).date():
+        raise HTTPException(400, "Scheduled date must be in the future")
+    if rate <= 0:
+        raise HTTPException(400, "Cost must be positive")
+    db.schedule_rate(con, d.isoformat(), rate, note)
+    con.commit()
+    return RedirectResponse("/admin/settings?msg=Scheduled change added", status_code=303)
+
+
+@app.post("/admin/schedule/delete")
+def admin_schedule_delete(sid: int = Form(...), csrf: str = Form(""),
+                          user=Depends(owner_of), con=Depends(get_con)):
+    check_csrf(user, csrf)
+    db.delete_scheduled_rate(con, sid)
+    con.commit()
+    return RedirectResponse("/admin/settings?msg=Scheduled change removed", status_code=303)

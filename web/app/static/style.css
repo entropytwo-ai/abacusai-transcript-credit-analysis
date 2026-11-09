@@ -82,9 +82,25 @@ ul.note li { margin:.3rem 0; }
 .costchart { border:1px solid var(--line); border-radius:6px; padding:.5rem; overflow-x:auto; }
 .costchart svg { width:100%; min-width:520px; height:auto; display:block; }
 .costchart .gl { stroke:var(--line); stroke-dasharray:4 4; opacity:.6; }
-.costchart .cl { stroke:var(--hi); stroke-width:2.5; stroke-linejoin:round; }
+.costchart .cl { stroke:var(--hi); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
 .costchart .cd { fill:var(--hi); stroke:var(--bg); stroke-width:2; }
 .costchart .yl, .costchart .xl { fill:var(--muted); font-size:13px; }
+/* The current price "rides" the line: a pulsing marker + number at today. */
+.costchart .rider-dot { fill:var(--bg); stroke:var(--hi); stroke-width:2.5; }
+.costchart .rider-ring { fill:none; stroke:var(--hi); stroke-width:1.5; opacity:.5; transform-box:fill-box; transform-origin:center; animation:riderpulse 2s ease-out infinite; }
+.costchart .rider-lbl { fill:var(--hi); font-size:14px; font-weight:700; }
+@keyframes riderpulse { 0%{transform:scale(1);opacity:.6;} 70%{transform:scale(2.2);opacity:0;} 100%{transform:scale(2.2);opacity:0;} }
+@media (prefers-reduced-motion: reduce) { .costchart .rider-ring { animation:none; } }
+/* Pre-announced future change: dashed projection, hollow marker, label. */
+.costchart .proj { stroke:var(--link); stroke-width:2; stroke-dasharray:6 5; stroke-linejoin:round; opacity:.9; }
+.costchart .sd { fill:var(--bg); stroke:var(--link); stroke-width:2; }
+.costchart .sl { fill:var(--link); font-size:12px; font-weight:600; }
+.costchart .todayline { stroke:var(--muted); stroke-width:1; stroke-dasharray:2 4; opacity:.6; }
+.costchart .todaylbl { fill:var(--muted); font-size:11px; }
+b.sched { color:var(--link); }
+.schedform { display:flex; flex-wrap:wrap; gap:.6rem 1rem; align-items:flex-end; margin-top:.8rem; }
+.schedform label { display:flex; flex-direction:column; gap:.2rem; font-size:.9rem; color:var(--muted); }
+.schedform input { font:inherit; }
 .h1row { display:flex; align-items:baseline; flex-wrap:wrap; gap:.3rem .7rem; }
 .hdrnote { color:var(--muted); font-size:.82rem; font-weight:normal; }
 .ghmark { display:inline-block; vertical-align:-2px; color:var(--muted); }

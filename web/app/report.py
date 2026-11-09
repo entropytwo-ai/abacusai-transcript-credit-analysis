@@ -174,10 +174,13 @@ def daily(con) -> list:
 
 
 def cost_history(con) -> dict:
-    """Cost per 10,000 credits over time, as ready-to-render SVG geometry for a step chart.
+    """Cost per 10,000 credits over time, as ready-to-render SVG geometry.
 
-    Every point is a recorded change to rate_usd_per_10k; the line holds flat between
-    changes and steps on each change, then runs flat to today at the current cost.
+    The line slopes between recorded changes (hills when the cost rises, valleys when it
+    falls) and holds flat to today at the current cost. The current price "rides the line":
+    a marker and a number sit on the line at today and move up or down whenever a new slope
+    forms. Any pre-announced future changes (scheduled_rates) are drawn as a dashed slope
+    projecting ahead to the new price on its effective date.
     """
     from datetime import date as _date, timedelta
     zone = _zone(con)
@@ -195,18 +198,33 @@ def cost_history(con) -> dict:
     if not pts:
         return {}
 
-    first = _date.fromisoformat(pts[0]["date"])
     today = datetime.now(zone).date()
+    cur = pts[-1]["rate"]
+    # Pre-announced future changes (only those still ahead of today).
+    sched = []
+    for r in db.scheduled_rates(con, pending_only=True):
+        try:
+            sd = _date.fromisoformat(r["effective_date"])
+        except (ValueError, TypeError):
+            continue
+        if sd > today:
+            sched.append({"date": r["effective_date"], "rate": float(r["rate"]),
+                          "note": (r["note"] or "")})
+    sched.sort(key=lambda s: s["date"])
+
+    first = _date.fromisoformat(pts[0]["date"])
     last = _date.fromisoformat(pts[-1]["date"])
-    end = max(today, last)
-    domain_end = end if end > first else first + timedelta(days=1)
-    span = (domain_end - first).days or 1
+    # Right edge of the time axis: the furthest scheduled change if any, else today.
+    right_date = max([last, today] + [_date.fromisoformat(s["date"]) for s in sched])
+    span = (right_date - first).days or 1
 
     W, H = 1000, 300
     PL, PR, PT, PB = 64, 24, 24, 44
     pw, ph = W - PL - PR, H - PT - PB
     ybot = PT + ph
-    top_val = (max(p["rate"] for p in pts) * 1.25) or 1.0
+    xr = W - PR                                  # right edge of the plot area
+    all_rates = [p["rate"] for p in pts] + [s["rate"] for s in sched]
+    top_val = (max(all_rates) * 1.25) or 1.0
 
     def X(d):
         return PL + (d - first).days / span * pw
@@ -214,24 +232,48 @@ def cost_history(con) -> dict:
     def Y(rate):
         return ybot - (rate / top_val) * ph
 
+    # Where "now" sits on the x-axis. With no future schedule the line runs flat to the right
+    # edge so the current price rides at the current moment; with a schedule, "now" is the
+    # interior point today, and the dashed projection carries on to the right.
+    now_x = X(today) if sched else float(xr)
+
+    # Historical line: slope directly from point to point (hills up, valleys down), then hold
+    # flat to "now" at the current cost.
     seg = ["M %.1f,%.1f" % (X(first), Y(pts[0]["rate"]))]
-    prev = pts[0]["rate"]
     for p in pts[1:]:
-        px = X(_date.fromisoformat(p["date"]))
-        seg.append("L %.1f,%.1f L %.1f,%.1f" % (px, Y(prev), px, Y(p["rate"])))
-        prev = p["rate"]
-    seg.append("L %.1f,%.1f" % (X(domain_end), Y(prev)))   # flat to today
+        seg.append("L %.1f,%.1f" % (X(_date.fromisoformat(p["date"])), Y(p["rate"])))
+    seg.append("L %.1f,%.1f" % (now_x, Y(cur)))
     path = " ".join(seg)
+
+    # Projected (dashed) line into the future toward each pre-announced change.
+    proj = ""
+    if sched:
+        pseg = ["M %.1f,%.1f" % (now_x, Y(cur))]
+        for s in sched:
+            pseg.append("L %.1f,%.1f" % (X(_date.fromisoformat(s["date"])), Y(s["rate"])))
+        proj = " ".join(pseg)
 
     dots = [{"x": round(X(_date.fromisoformat(p["date"])), 1), "y": round(Y(p["rate"]), 1),
              "date": p["date"], "rate": p["rate"]} for p in pts]
+    sched_dots = [{"x": round(X(_date.fromisoformat(s["date"])), 1), "y": round(Y(s["rate"]), 1),
+                   "date": s["date"], "rate": s["rate"], "note": s["note"]} for s in sched]
     ygrid = [{"y": round(ybot - f * ph, 1), "label": "$%.2f" % (top_val * f)} for f in (0, .25, .5, .75, 1.0)]
     xlabels = [{"x": round(X(first), 1), "label": pts[0]["date"], "anchor": "start"},
-               {"x": round(X(domain_end), 1), "label": end.isoformat(), "anchor": "end"}]
+               {"x": round(float(xr), 1), "label": right_date.isoformat(), "anchor": "end"}]
 
-    base, cur = pts[0]["rate"], pts[-1]["rate"]
-    return {"path": path, "dots": dots, "ygrid": ygrid, "xlabels": xlabels,
-            "w": W, "h": H, "current": cur, "first": base,
+    # The current price rides the line at "now": a marker + number on the line itself.
+    ry = Y(cur)
+    near_right = now_x > PL + pw * 0.55
+    rider = {"x": round(now_x, 1), "y": round(ry, 1), "rate": cur,
+             "lx": round(now_x + (-9 if near_right else 9), 1),
+             "ly": round(min(ybot - 4, max(PT + 14, ry - 12)), 1),
+             "anchor": "end" if near_right else "start"}
+    today_x = round(X(today), 1)
+
+    base = pts[0]["rate"]
+    return {"path": path, "proj": proj, "dots": dots, "sched_dots": sched_dots,
+            "ygrid": ygrid, "xlabels": xlabels, "rider": rider, "today_x": today_x,
+            "w": W, "h": H, "current": cur, "first": base, "has_proj": bool(sched),
             "inflation_pct": ((cur - base) / base * 100) if base else 0.0,
             "changes": len(pts) - 1}
 

@@ -14,4 +14,37 @@
   <label class="check"><input type="checkbox" name="rebrief" value="1"> Rewrite all excerpts on the next sync (uses a few credits)</label>
   <button class="btn">Save</button>
 </form>
+
+<div class="panel">
+  <h2>Schedule a future cost change</h2>
+  <p class="note">Pre-announcing a price rise to customers? Set the new cost and the date it takes effect. It shows on the cost chart as a <b class="sched">dashed projection</b> toward that price, then switches on by itself on the effective date (recorded into the price history, and the current cost rides up to it). Nothing changes before then.</p>
+  {% if scheduled %}
+  <table class="grid">
+    <thead><tr><th>Effective date</th><th class="num">New cost / 10k</th><th>Note</th><th></th></tr></thead>
+    <tbody>
+    {% for sc in scheduled %}
+      <tr>
+        <td>{{ sc.effective_date }}</td>
+        <td class="num">${{ "%.2f"|format(sc.rate) }}</td>
+        <td>{{ sc.note }}</td>
+        <td class="num"><form method="post" action="/admin/schedule/delete" class="inline">
+          <input type="hidden" name="csrf" value="{{ user.csrf }}">
+          <input type="hidden" name="sid" value="{{ sc.id }}">
+          <button class="btn danger small">Remove</button>
+        </form></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="note">No scheduled changes.</p>
+  {% endif %}
+  <form method="post" action="/admin/schedule" class="schedform">
+    <input type="hidden" name="csrf" value="{{ user.csrf }}">
+    <label>Effective date <input name="effective_date" type="date" required></label>
+    <label>New USD per 10,000 credits <input name="rate" type="number" step="any" min="0.0001" required></label>
+    <label>Note (optional) <input name="note" type="text" maxlength="120" placeholder="e.g. provider price increase"></label>
+    <button class="btn">Add scheduled change</button>
+  </form>
+</div>
 {% endblock %}
