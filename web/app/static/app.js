@@ -30,6 +30,38 @@
     });
   });
 
+  // "A Word From Douglas Adams": play the video in an in-window modal instead of
+  // leaving the page. Falls back to the plain link if JS is unavailable.
+  var modal = document.getElementById("video-modal");
+  if (modal) {
+    var frame = modal.querySelector(".vmodal-frame");
+    function openVideo(id) {
+      frame.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + id +
+        '?autoplay=1&rel=0" title="A Word From Douglas Adams" frameborder="0" ' +
+        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+        'allowfullscreen></iframe>';
+      modal.hidden = false;
+      document.body.classList.add("vmodal-open");
+    }
+    function closeVideo() {
+      modal.hidden = true;
+      frame.innerHTML = "";
+      document.body.classList.remove("vmodal-open");
+    }
+    document.querySelectorAll("a.adams-video").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        openVideo(a.dataset.video);
+      });
+    });
+    modal.querySelectorAll("[data-close]").forEach(function (el) {
+      el.addEventListener("click", closeVideo);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !modal.hidden) closeVideo();
+    });
+  }
+
   var btn = document.getElementById("sync-now"), text = document.getElementById("sync-text");
   function poll() {
     fetch("/api/sync/status", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (s) {

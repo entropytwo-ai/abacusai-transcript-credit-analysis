@@ -10,7 +10,7 @@
 <body id="top">
 <header class="top">
   <a class="brand" href="/">▌credit-scanner<span>web</span></a>
-  <a class="adams" href="https://youtu.be/CV7Yeuc5F8w" target="_blank" rel="noopener">A Word From Douglas Adams</a>
+  <a class="adams adams-video" href="https://youtu.be/CV7Yeuc5F8w" data-video="CV7Yeuc5F8w">A Word From Douglas Adams</a>
   {% if user %}
   <nav>
     <a href="/">Summary</a>
@@ -25,9 +25,16 @@
 {% block content %}{% endblock %}
 </main>
 <footer>credit-scanner web v{{ version }} ·
-  <a href="https://youtu.be/CV7Yeuc5F8w" target="_blank" rel="noopener">A Word From Douglas Adams</a> ·
+  <a class="adams-video" href="https://youtu.be/CV7Yeuc5F8w" data-video="CV7Yeuc5F8w">A Word From Douglas Adams</a> ·
   data from the Abacus.AI API ·
   <a href="https://github.com/entropytwo-ai/abacusai-transcript-credit-analysis">source (GPLv3)</a></footer>
+<div id="video-modal" class="vmodal" hidden>
+  <div class="vmodal-backdrop" data-close></div>
+  <div class="vmodal-box" role="dialog" aria-modal="true" aria-label="A Word From Douglas Adams">
+    <button type="button" class="vmodal-close" data-close aria-label="Close">×</button>
+    <div class="vmodal-frame"></div>
+  </div>
+</div>
 {% if user %}<script>window.CSRF = "{{ user.csrf }}";</script>{% endif %}
 <script src="/static/app.js?v={{ version }}"></script>
 </body>
