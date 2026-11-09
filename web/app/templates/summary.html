@@ -46,11 +46,12 @@
 </table></div>
 {% include "_stats.html" %}
 {% if daily %}
-<h2>Credits per day (UTC)</h2>
+<h2>Credits per day ({{ tz }})</h2>
 <div class="chart" role="img" aria-label="Credits per day">
   {% for d in daily %}
   <div class="bar" title="{{ d.day }}: {{ d.credits | n0 }} credits"><span style="height: calc((100% - 40px) * {{ (d.credits / daily_max) if daily_max else 0 }})"></span><i>{{ d.day[5:] }}</i></div>
   {% endfor %}
 </div>
 {% endif %}
+{% include "_activity.html" %}
 {% endblock %}

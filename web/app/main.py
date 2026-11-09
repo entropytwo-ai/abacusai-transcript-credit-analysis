@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -190,6 +190,8 @@ def summary(request: Request, sort: str = "credits-desc", user=Depends(user_of),
     days = report.daily(con)
     ctx["daily"] = days
     ctx["daily_max"] = max((d["credits"] for d in days), default=0)
+    ctx["activity"] = report.active_times(con)
+    ctx["tz"] = report.tz_label(con)
     return render(request, "summary.html", user, **ctx)
 
 
@@ -202,7 +204,7 @@ def project(request: Request, slug: str, user=Depends(user_of), con=Depends(get_
     chats = con.execute("SELECT id, name, created_at FROM conversations WHERE project_id = ? AND excluded = 0 "
                         "ORDER BY created_at", (p["id"],)).fetchall()
     return render(request, "project.html", user, p=p, turns=turns, chats=chats, settings=report.settings(con),
-                  sync=sync.status())
+                  sync=sync.status(), activity=report.active_times(con, p["id"]), tz=report.tz_label(con))
 
 
 @app.get("/dive", response_class=HTMLResponse)

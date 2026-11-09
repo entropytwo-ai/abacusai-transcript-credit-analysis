@@ -53,6 +53,12 @@ ul.note li { margin:.3rem 0; }
 .chart .bar { flex:1 0 18px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; }
 .chart .bar span { display:block; width:100%; background:linear-gradient(var(--hi), #1d7a3a); border-radius:2px 2px 0 0; min-height:1px; }
 .chart .bar i { font-style:normal; font-size:.62rem; color:var(--muted); height:36px; margin-top:4px; white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg); }
+.actchart { display:flex; align-items:stretch; gap:3px; height:240px; padding:.5rem; border:1px solid var(--line); border-radius:6px; overflow-x:auto; }
+.actchart .daycol { position:relative; flex:1 0 16px; min-width:16px; }
+.actchart .daycol .dot { position:absolute; left:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px; border-radius:50%; background:var(--hi); opacity:.72; box-shadow:0 0 3px rgba(57,255,122,.55); }
+.actchart .daycol i { position:absolute; bottom:0; left:50%; transform:translateX(-50%) rotate(180deg); writing-mode:vertical-rl; font-style:normal; font-size:.62rem; color:var(--muted); height:36px; white-space:nowrap; }
+.actchart .yaxis { flex:0 0 22px; min-width:22px; border-right:1px solid var(--line); margin-right:4px; }
+.actchart .yaxis i.h { writing-mode:horizontal-tb; transform:translateY(-50%); bottom:auto; left:1px; height:auto; }
 .toc { display:flex; flex-wrap:wrap; gap:.3rem .9rem; margin:.5rem 0 1rem; font-size:.9rem; }
 tr.excluded td { opacity:.55; } .assign .newname { width:11rem; }
 @media (max-width:700px) { main { padding:.6rem; } .grid th, .grid td { padding:.35rem .4rem; font-size:.85rem; } .dive td.ctx { min-width:240px; } }

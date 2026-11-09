@@ -18,6 +18,11 @@ def _zone(con):
         return ZoneInfo("America/New_York")
 
 
+def tz_label(con) -> str:
+    """Short current abbreviation of the display timezone, e.g. 'EST' / 'EDT'."""
+    return datetime.now(_zone(con)).strftime("%Z") or "local"
+
+
 def local_dt(iso: str, zone):
     """Parse a stored ISO timestamp (UTC) and return it as an aware datetime in `zone`."""
     if not iso:
@@ -165,3 +170,33 @@ def daily(con) -> list:
         if day:
             agg[day] += r["credits"] or 0
     return [{"day": day, "credits": agg[day]} for day in sorted(agg)]
+
+
+def active_times(con, project_id: int | None = None) -> list:
+    """Per-day list of turn start-times (display timezone) for the activity scatter chart.
+
+    Each turn is placed by when the user sent the prompt (``user_ts``), falling back to
+    the agent's reply time. ``frac`` is the position down a 24h axis (0.0 = 00:00 top,
+    1.0 = 24:00 bottom); ``label`` is HH:MM for the hover tooltip.
+    """
+    zone = _zone(con)
+    sql = ("SELECT t.user_ts AS user_ts, t.bot_ts AS bot_ts FROM turns t "
+           "JOIN conversations c ON c.id = t.conversation_id "
+           "WHERE c.excluded = 0 AND c.project_id IS NOT NULL")
+    params: list = []
+    if project_id is not None:
+        sql += " AND c.project_id = ?"
+        params.append(project_id)
+    byday: dict = {}
+    for r in con.execute(sql, params).fetchall():
+        dt = local_dt(r["user_ts"] or r["bot_ts"], zone)
+        if not dt:
+            continue
+        minutes = dt.hour * 60 + dt.minute
+        byday.setdefault(dt.strftime("%Y-%m-%d"), []).append(
+            {"frac": minutes / 1440.0, "label": dt.strftime("%H:%M")})
+    out = []
+    for day in sorted(byday):
+        dots = sorted(byday[day], key=lambda d: d["frac"])
+        out.append({"day": day, "dots": dots, "count": len(dots)})
+    return out

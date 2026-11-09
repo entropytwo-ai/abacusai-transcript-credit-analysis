@@ -1,0 +1,20 @@
+{# Active-times scatter: one column per day, a dot at each turn's start time down a 24h axis. #}
+{% if activity %}
+<h2>Active times per day ({{ tz }})</h2>
+<div class="actchart" role="img" aria-label="Active times per day">
+  <div class="daycol yaxis" aria-hidden="true">
+    <i class="h" style="top: calc((100% - 40px) * 0)">00</i>
+    <i class="h" style="top: calc((100% - 40px) * .25)">06</i>
+    <i class="h" style="top: calc((100% - 40px) * .5)">12</i>
+    <i class="h" style="top: calc((100% - 40px) * .75)">18</i>
+    <i class="h" style="top: calc((100% - 40px) * 1)">24</i>
+  </div>
+  {% for d in activity %}
+  <div class="daycol" title="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }}">
+    {% for dot in d.dots %}<span class="dot" style="top: calc((100% - 40px) * {{ dot.frac }})" title="{{ d.day }} {{ dot.label }}"></span>{% endfor %}
+    <i>{{ d.day[5:] }}</i>
+  </div>
+  {% endfor %}
+</div>
+<p class="note">Each dot is one turn, placed at the time of day you sent the prompt (times in {{ tz }}). Earlier in the day is higher.</p>
+{% endif %}

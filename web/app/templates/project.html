@@ -10,4 +10,5 @@
 {% set show_chat = chats | length > 1 %}
 {% include "_turns.html" %}
 <p class="note">Excerpts are short AI-written summaries with personal data removed. Words / Est. Tokens count only the chat text, not the agent's background work.</p>
+{% include "_activity.html" %}
 {% endblock %}
