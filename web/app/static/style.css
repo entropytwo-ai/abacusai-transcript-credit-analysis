@@ -128,6 +128,7 @@ tr.excluded td { opacity:.55; } .assign .newname { width:11rem; }
 .calcelltop { display:flex; align-items:baseline; justify-content:space-between; gap:.4rem; }
 .caldom { color:var(--muted); font-size:.8rem; font-weight:600; }
 .calcell.today .caldom { color:var(--hi); }
+.caldow { margin-left:.3rem; font-weight:500; font-size:.72rem; color:var(--muted); opacity:.85; }
 .caltot { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.74rem; color:var(--fg); white-space:nowrap; text-align:right; }
 .caltot b { color:var(--hi); }
 .calprojs { display:flex; flex-direction:column; gap:1px; max-height:150px; overflow-y:auto; }

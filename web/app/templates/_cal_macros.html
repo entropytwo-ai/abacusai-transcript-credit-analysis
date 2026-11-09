@@ -10,7 +10,7 @@
 {% else %}
 <div class="calcell{% if cell.is_today %} today{% endif %}{% if not cell.projects and not cell.change %} blank{% endif %}">
   <div class="calcelltop">
-    <span class="caldom">{{ cell.dom }}</span>
+    <span class="caldom">{{ cell.dom }}<span class="caldow">{{ cell.dow }}</span></span>
     {% if cell.projects %}<span class="caltot" title="Day total, valued at ${{ cell.rate | n2 }} per 10,000 credits"><b>{{ cell.credits | kc }}</b> &middot; {{ cell.usd | money }}</span>{% endif %}
   </div>
   {% if cell.change %}{{ ratebadge(cell.change) }}{% endif %}

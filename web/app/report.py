@@ -272,6 +272,7 @@ def _day_cell(core: dict, iso: str) -> dict:
                       "color": color[pid], "credits": int(round(cr)), "usd": usd(cr, rate)})
     items.sort(key=lambda x: x["credits"], reverse=True)
     return {"dom": int(iso[8:10]), "iso": iso,
+            "dow": datetime.fromisoformat(iso).strftime("%a"),
             "is_today": iso == core["today"].isoformat(),
             "credits": sum(i["credits"] for i in items),
             "usd": usd(sum(slot.values()), rate),
