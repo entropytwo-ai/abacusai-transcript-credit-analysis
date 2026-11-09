@@ -6,6 +6,14 @@ header.top { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; align-items:center;
 .brand { color:var(--hi); font:700 1.1rem ui-monospace, Menlo, Consolas, monospace; } .brand span { color:var(--muted); margin-left:.3rem; font-weight:400; }
 nav { display:flex; flex-wrap:wrap; gap:.4rem 1rem; align-items:center; }
 .adams { color:var(--link); margin-right:auto; }
+.valband { display:flex; flex-wrap:wrap; gap:.3rem 1.3rem; align-items:baseline; border:1px solid var(--line); background:var(--panel); padding:.5rem .8rem; border-radius:6px; margin:0 0 .7rem; font-size:.9rem; color:var(--muted); }
+.valband .k { color:var(--hi); font-weight:600; }
+.valband b { color:var(--fg); font-weight:600; }
+.valband b.up { color:var(--err); }
+.valband .toggle { margin-left:auto; cursor:pointer; }
+.asinc { display:none; }
+table.show-delta .asinc { display:table-cell; }
+td.asinc, th.asinc { white-space:nowrap; }
 .vmodal { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:4vmin; }
 .vmodal[hidden] { display:none; }
 .vmodal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.8); }

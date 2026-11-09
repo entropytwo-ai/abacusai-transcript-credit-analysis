@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.9"
+__version__ = "1.0.10"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -37,6 +37,7 @@ templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.filters["n0"] = lambda v: f"{int(round(v or 0)):,}"
 templates.env.filters["n2"] = lambda v: f"{(v or 0):,.2f}"
 templates.env.filters["money"] = lambda v: f"${(v or 0):,.2f}"
+templates.env.filters["moneyd"] = lambda v: (f"+${v:,.2f}" if (v or 0) >= 0 else f"-${-v:,.2f}")
 templates.env.filters["mins"] = lambda s: "<1" if 0 < (s or 0) < 60 else f"{(s or 0) / 60:,.0f}"
 
 
@@ -187,6 +188,7 @@ def _summary_ctx(con, sort):
 @app.get("/", response_class=HTMLResponse)
 def summary(request: Request, sort: str = "credits-desc", user=Depends(user_of), con=Depends(get_con)):
     ctx = _summary_ctx(con, sort)
+    ctx["valuation"] = report.valuation(con, ctx["rows"])
     days = report.daily(con)
     ctx["daily"] = days
     ctx["daily_max"] = max((d["credits"] for d in days), default=0)

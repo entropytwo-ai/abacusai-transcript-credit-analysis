@@ -236,6 +236,77 @@ def cost_history(con) -> dict:
             "changes": len(pts) - 1}
 
 
+def rate_schedule(con) -> list:
+    """Sorted [(local_date, rate)] of recorded cost changes, for time-accurate valuation."""
+    zone = _zone(con)
+    rows = con.execute("SELECT changed_at, rate FROM rate_history ORDER BY changed_at, id").fetchall()
+    sched: list = []
+    for r in rows:
+        d = local_date(r["changed_at"], zone)
+        if not d:
+            continue
+        rate = float(r["rate"])
+        if sched and sched[-1][0] == d:
+            sched[-1] = (d, rate)            # same day: the latest value wins
+        else:
+            sched.append((d, rate))
+    return sched
+
+
+def _rate_at(sched: list, day: str, current: float) -> float:
+    """Cost per 10,000 credits in effect on local date `day`.
+
+    Usage before the first recorded cost is valued at that first cost (we have no earlier
+    price); usage on/after a change takes the changed cost.
+    """
+    if not sched or not day:
+        return current
+    rate = sched[0][1]
+    for d, r in sched:
+        if d <= day:
+            rate = r
+        else:
+            break
+    return rate
+
+
+def valuation(con, rows: list) -> dict:
+    """Time-accurate ("as incurred") USD valuation beside the flat current-rate one.
+
+    Each turn's credits are valued at the cost per 10,000 credits that was in effect on the
+    day it happened, so old usage keeps its old price and new usage the new price — a
+    blended, dollar-cost-average view. Adds ``usd_asincurred`` and ``usd_delta`` to each row
+    (``usd_delta`` = today's-rate value minus as-incurred value) and returns the totals.
+    """
+    s = settings(con)
+    cur = s["rate"]
+    sched = rate_schedule(con)
+    if len({r for _, r in sched}) <= 1:            # only a baseline: nothing to blend yet
+        for row in rows:
+            row["usd_asincurred"] = row["usd"]
+            row["usd_delta"] = 0.0
+        tc = sum(row["usd"] for row in rows)
+        return {"current_rate": cur, "blended_rate": cur, "usd_current": tc,
+                "usd_asincurred": tc, "delta": 0.0, "has_changes": False}
+    zone = _zone(con)
+    per: dict = {}
+    for r in con.execute(
+            "SELECT c.project_id AS pid, t.bot_ts AS bot_ts, t.credits AS credits "
+            "FROM turns t JOIN conversations c ON c.id = t.conversation_id "
+            "WHERE c.excluded = 0 AND c.project_id IS NOT NULL").fetchall():
+        rate = _rate_at(sched, local_date(r["bot_ts"], zone), cur)
+        per[r["pid"]] = per.get(r["pid"], 0.0) + (r["credits"] or 0) * rate / 10000.0
+    for row in rows:
+        ai = per.get(row["id"], 0.0)
+        row["usd_asincurred"] = ai
+        row["usd_delta"] = row["usd"] - ai
+    tc = sum(row["usd"] for row in rows)
+    ta = sum(row["usd_asincurred"] for row in rows)
+    credits = sum(row["credits_i"] for row in rows)
+    return {"current_rate": cur, "blended_rate": (ta / credits * 10000.0) if credits else cur,
+            "usd_current": tc, "usd_asincurred": ta, "delta": tc - ta, "has_changes": True}
+
+
 def active_times(con, project_id: int | None = None) -> list:
     """Per-day list of turn start-times (display timezone) for the activity scatter chart.
 

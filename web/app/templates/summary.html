@@ -12,6 +12,16 @@
   <div class="card"><div class="k">Projects / chats / turns</div><div class="v">{{ total.files }} / {{ total.chats }} / {{ total.turns }}</div></div>
   <div class="card"><div class="k">Agent run time</div><div class="v">{{ total.runtime_secs | dur }}</div></div>
 </div>
+{% if valuation %}
+<div class="valband">
+  <span class="k">Credit valuation</span>
+  <span title="Every credit valued at today's cost per 10,000 credits.">At today&rsquo;s rate (${{ valuation.current_rate | n2 }}/10k): <b>{{ valuation.usd_current | money }}</b></span>
+  <span title="Each turn's credits valued at the cost that was in effect on the day it happened — old usage at old prices, new usage at new prices (a dollar-cost-average blend).">As incurred{% if valuation.has_changes %} (blended ${{ valuation.blended_rate | n2 }}/10k){% endif %}: <b>{{ valuation.usd_asincurred | money }}</b></span>
+  <span title="Today's-rate value minus the as-incurred value: how much credit inflation has added to the worth of your past usage.">Inflation delta: <b class="{{ 'up' if valuation.delta > 0.005 else '' }}">{{ valuation.delta | moneyd }}</b></span>
+  {% if not valuation.has_changes %}<span class="muted">no price changes recorded yet</span>{% endif %}
+  <a class="toggle" href="#" id="delta-toggle" role="button">Show per-project delta</a>
+</div>
+{% endif %}
 <p class="actions"><a class="btn" href="/export/summary.csv?sort={{ sort }}">Download CSV</a> <a class="btn" href="/export/summary.pdf?sort={{ sort }}">Download PDF</a> <a class="btn" href="/export/dive.csv">Download dive CSV</a> <a class="btn" href="/export/dive.pdf?sort={{ sort }}">Download dive PDF</a>
 <span class="muted">Click a column heading to sort.</span></p>
 <div class="scroll"><table class="grid sortable" id="summary">
@@ -21,12 +31,16 @@
     <th class="num" data-type="num">Time Spent</th>
     <th class="num" data-type="num">Text Size</th><th class="num" data-type="num">Words</th><th class="num" data-type="num">Est. Tokens</th>
     <th class="num" data-type="num">Total Credits</th><th class="num" data-type="num">USD Value</th>
+    <th class="num asinc" data-type="num" title="Credits valued at the cost in effect when each turn happened (old and new prices blended).">USD (as incurred)</th>
+    <th class="num asinc" data-type="num" title="Today's-rate value minus the as-incurred value for this project.">&Delta; vs today</th>
   </tr>
   <tr class="total-row">
     <td>TOTAL</td><td></td><td></td><td class="num">{{ total.chats }}</td><td class="num">{{ total.turns }}</td>
     <td class="num">{{ total.runtime_secs | dur }}</td>
     <td class="num">{{ total.size_h }}</td><td class="num">{{ total.words | n0 }}</td><td class="num">{{ total.tokens | n0 }}</td>
     <td class="num">{{ total.credits | n0 }}</td><td class="num">{{ total.usd | money }}</td>
+    <td class="num asinc">{{ valuation.usd_asincurred | money if valuation else total.usd | money }}</td>
+    <td class="num asinc">{{ (valuation.delta if valuation else 0) | moneyd }}</td>
   </tr></thead>
   <tbody>
   {% for r in rows %}
@@ -41,9 +55,11 @@
     <td class="num" data-v="{{ r.tokens }}">{{ r.tokens | n0 }}</td>
     <td class="num" data-v="{{ r.credits }}">{{ r.credits_i | n0 }}</td>
     <td class="num" data-v="{{ r.usd }}">{{ r.usd | money }}</td>
+    <td class="num asinc" data-v="{{ r.usd_asincurred if r.usd_asincurred is defined else r.usd }}">{{ (r.usd_asincurred if r.usd_asincurred is defined else r.usd) | money }}</td>
+    <td class="num asinc" data-v="{{ r.usd_delta if r.usd_delta is defined else 0 }}">{{ (r.usd_delta if r.usd_delta is defined else 0) | moneyd }}</td>
   </tr>
   {% else %}
-  <tr><td colspan="11" class="muted">No data yet. {% if user.role == 'owner' %}Press <b>Sync now</b>.{% endif %}</td></tr>
+  <tr><td colspan="13" class="muted">No data yet. {% if user.role == 'owner' %}Press <b>Sync now</b>.{% endif %}</td></tr>
   {% endfor %}
   </tbody>
 </table></div>

@@ -62,6 +62,18 @@
     });
   }
 
+  // "Show per-project delta": reveal the as-incurred / delta columns without
+  // changing the default table width.
+  var dtoggle = document.getElementById("delta-toggle");
+  var stable = document.getElementById("summary");
+  if (dtoggle && stable) {
+    dtoggle.addEventListener("click", function (e) {
+      e.preventDefault();
+      var on = stable.classList.toggle("show-delta");
+      dtoggle.textContent = on ? "Hide per-project delta" : "Show per-project delta";
+    });
+  }
+
   var btn = document.getElementById("sync-now"), text = document.getElementById("sync-text");
   function poll() {
     fetch("/api/sync/status", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (s) {
