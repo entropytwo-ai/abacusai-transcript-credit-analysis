@@ -2,12 +2,16 @@
 {% if activity %}
 <h2>Active times per day ({{ tz }})</h2>
 <div class="actchart" role="img" aria-label="Active times per day">
+  {# Horizontal gridlines span the full plot width, one per hour label (every 3h). #}
+  <div class="gridlines" aria-hidden="true">
+    {% for hr in [24, 21, 18, 15, 12, 9, 6, 3, 0] %}
+    <i class="gl" style="top: calc((100% - 40px) * {{ (24 - hr) / 24 }})"></i>
+    {% endfor %}
+  </div>
   <div class="daycol yaxis" aria-hidden="true">
-    <i class="h" style="top: calc((100% - 40px) * 0)">24</i>
-    <i class="h" style="top: calc((100% - 40px) * .25)">18</i>
-    <i class="h" style="top: calc((100% - 40px) * .5)">12</i>
-    <i class="h" style="top: calc((100% - 40px) * .75)">06</i>
-    <i class="h" style="top: calc((100% - 40px) * 1)">00</i>
+    {% for hr in [24, 21, 18, 15, 12, 9, 6, 3, 0] %}
+    <i class="h" style="top: calc((100% - 40px) * {{ (24 - hr) / 24 }})">{{ "%02d" | format(hr) }}</i>
+    {% endfor %}
   </div>
   {% for d in activity %}
   <div class="daycol" title="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }}">
