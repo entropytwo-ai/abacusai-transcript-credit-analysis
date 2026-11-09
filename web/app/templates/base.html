@@ -23,7 +23,9 @@
 <main>
 {% block content %}{% endblock %}
 </main>
-<footer>credit-scanner web v{{ version }} · data from the Abacus.AI API ·
+<footer>credit-scanner web v{{ version }} ·
+  <a href="https://youtu.be/CV7Yeuc5F8w">A Word From Douglas Adams</a> ·
+  data from the Abacus.AI API ·
   <a href="https://github.com/entropytwo-ai/abacusai-transcript-credit-analysis">source (GPLv3)</a></footer>
 {% if user %}<script>window.CSRF = "{{ user.csrf }}";</script>{% endif %}
 <script src="/static/app.js?v={{ version }}"></script>
