@@ -141,3 +141,54 @@ tr.excluded td { opacity:.55; } .assign .newname { width:11rem; }
 .calleg:hover { background:#101c10; text-decoration:none; border-color:var(--hi); }
 .calleg .calname { flex:none; max-width:14rem; }
 .calleg .calnum { color:var(--hi); }
+
+
+/* Calendar: view tabs */
+.caltabs { display:flex; flex-wrap:wrap; gap:.3rem; margin:.2rem 0 1rem; border-bottom:1px solid var(--line); }
+.caltab { padding:.35rem .9rem; border:1px solid var(--line); border-bottom:0; border-radius:6px 6px 0 0; color:var(--link); background:#0e140e; margin-bottom:-1px; }
+.caltab:hover { background:#101c10; text-decoration:none; }
+.caltab.active { color:var(--hi); background:var(--panel); border-color:var(--hi); font-weight:600; }
+
+/* Calendar: cost-change badge inside a day cell + month/range summary strip */
+.calrate { display:inline-block; font-size:.72rem; font-weight:700; padding:.05rem .3rem; border-radius:3px; border:1px solid; margin:.05rem 0; white-space:nowrap; }
+.calrate.up { color:var(--err); border-color:var(--err); background:rgba(255,107,107,.1); }
+.calrate.down { color:var(--hi); border-color:var(--hi); background:rgba(57,255,122,.1); }
+.calrate.pending { border-style:dashed; opacity:.9; }
+.calrate em { font-style:normal; opacity:.75; font-weight:600; }
+.calchanges { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem .7rem; border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:.4rem .7rem; margin:0 0 .9rem; font-size:.84rem; }
+.calchanges .k { color:var(--hi); font-weight:600; }
+.calchanges .chg { font-family:ui-monospace, Menlo, Consolas, monospace; }
+.calchanges .chg.up { color:var(--err); } .calchanges .chg.down { color:var(--hi); }
+.calchanges .chg em { font-style:italic; opacity:.8; }
+
+/* Calendar: year view (12 mini-months) */
+.calyeargrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:.8rem; }
+.minimonth { border:1px solid var(--line); border-radius:6px; background:var(--panel); padding:.4rem .5rem .5rem; }
+.minimonth.off { opacity:.5; }
+.minihead { display:flex; align-items:baseline; justify-content:space-between; gap:.4rem; margin-bottom:.3rem; }
+.minihead:hover { text-decoration:none; }
+.minititle { color:var(--hi); font-weight:600; }
+.minitot { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.72rem; color:var(--muted); }
+.minigrid { display:grid; grid-template-columns:repeat(7, 1fr); gap:1px; }
+.minihd { text-align:center; font-size:.6rem; color:var(--muted); padding:1px 0; }
+.minicell { min-height:1.9rem; border:1px solid #1a2a1a; border-radius:2px; padding:1px 2px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; background:#0d130d; }
+.minicell.empty { background:transparent; border-color:transparent; }
+.minicell.today { outline:1.5px solid var(--hi); outline-offset:-1px; }
+.minicell.chg { border-color:var(--err); }
+.minidom { font-size:.6rem; color:var(--muted); line-height:1; }
+.minicr { font-size:.6rem; font-family:ui-monospace, Menlo, Consolas, monospace; color:var(--hi); line-height:1.1; }
+
+/* Calendar: range / schedule date-picker form */
+.calrangeform { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem .9rem; margin:.2rem 0 1rem; }
+.calrangeform label { color:var(--muted); font-size:.88rem; }
+.calrangeform input[type=date] { background:#0e140e; color:var(--fg); border:1px solid var(--line); border-radius:4px; padding:.25rem .4rem; font:inherit; }
+.calrangeform .calmonth { min-width:auto; }
+
+/* Calendar: schedule (agenda) view */
+.today-row td { background:#101c10; }
+.schprojs { display:flex; flex-wrap:wrap; gap:.3rem .5rem; }
+.schchip { display:inline-flex; align-items:center; gap:.3rem; background:#0e140e; border:1px solid var(--line); border-radius:4px; padding:.15rem .45rem; font-size:.8rem; color:var(--fg); }
+.schchip:hover { background:#101c10; border-color:var(--hi); text-decoration:none; }
+.schchip .calusd { min-width:auto; color:var(--muted); }
+.schgchg { font-size:.76rem; font-weight:600; font-family:ui-monospace, Menlo, Consolas, monospace; }
+.schgchg.up { color:var(--err); } .schgchg.down { color:var(--hi); }

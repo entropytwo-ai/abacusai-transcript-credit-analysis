@@ -194,24 +194,19 @@ def calendar_months(con) -> list:
     return sorted(months)
 
 
-def calendar_data(con, month: str | None = None) -> dict:
-    """Credit and USD usage per day for one month, broken down by project, laid out as a
-    calendar grid (Sunday-first). USD per day is valued at the cost that was in effect on
-    that day (as-incurred), matching the valuation band. `month` is 'YYYY-MM'."""
-    import calendar as _cal
-    from datetime import date as _date
+def _cal_core(con) -> dict:
+    """Shared calendar data: per-day per-project credits, colors, cost-change markers and a
+    rate-in-effect lookup. Every calendar view (month/week/year/range/schedule) builds on this."""
     zone = _zone(con)
     cur_rate = settings(con)["rate"]
     sched = rate_schedule(con)
 
-    # Stable color + ordering per project (by total credits across all time).
     pj = {r["id"]: {"name": r["name"], "slug": r["slug"], "total": r["credits"]}
           for r in projects(con, "credits-desc")}
-    order = list(pj.keys())                        # already credits-desc
+    order = list(pj.keys())                         # already credits-desc
     n = len(order)
     color = {pid: _project_color(i, n) for i, pid in enumerate(order)}
 
-    # Per-day, per-project credit totals.
     rows = con.execute("""
         SELECT c.project_id AS pid, t.bot_ts AS bot_ts, t.credits AS credits FROM turns t
         JOIN conversations c ON c.id = t.conversation_id
@@ -224,81 +219,300 @@ def calendar_data(con, month: str | None = None) -> dict:
         slot = byday.setdefault(d, {})
         slot[r["pid"]] = slot.get(r["pid"], 0.0) + (r["credits"] or 0)
 
-    months = calendar_months(con)
     today = datetime.now(zone).date()
-    if month not in months and months:
-        month = months[-1]                         # default: latest month with data
-    if not month:
-        month = today.strftime("%Y-%m")
-    y, m = int(month[:4]), int(month[5:7])
+    months = calendar_months(con)
+
+    # Pre-announced future cost changes (still ahead of today).
+    from datetime import date as _cdate
+    pending = []
+    for r in db.scheduled_rates(con, pending_only=True):
+        try:
+            sd = _cdate.fromisoformat(r["effective_date"]).isoformat()
+        except (ValueError, TypeError):
+            continue
+        if sd > today.isoformat():
+            pending.append((sd, float(r["rate"]), r["note"] or ""))
+    pending.sort(key=lambda p: p[0])
+    full_sched = sorted(sched + [(sd, rt) for sd, rt, _ in pending], key=lambda s: s[0])
+
+    # A change is any entry whose rate differs from the one before it (first = baseline).
+    change_on: dict = {}
+    prev = None
+    for d, rt in sched:
+        if prev is not None and abs(rt - prev) > 1e-9:
+            change_on[d] = {"from": prev, "to": rt, "up": rt > prev,
+                            "pct": ((rt - prev) / prev * 100) if prev else 0.0,
+                            "pending": False, "note": ""}
+        prev = rt
+    for sd, rt, note in pending:
+        if prev is not None and abs(rt - prev) > 1e-9:
+            change_on[sd] = {"from": prev, "to": rt, "up": rt > prev,
+                             "pct": ((rt - prev) / prev * 100) if prev else 0.0,
+                             "pending": True, "note": note}
+        prev = rt
 
     def rate_for(day: str) -> float:
-        return _rate_at(sched, day, cur_rate)
+        return _rate_at(full_sched, day, cur_rate)
 
-    # Build the day cells for this month.
-    cells = {}
-    present = set()
-    for d, slot in byday.items():
-        if d[:7] != month:
+    return {"zone": zone, "cur_rate": cur_rate, "pj": pj, "order": order, "color": color,
+            "byday": byday, "today": today, "months": months, "pending": pending,
+            "change_on": change_on, "rate_for": rate_for}
+
+
+def _day_cell(core: dict, iso: str) -> dict:
+    """One calendar day: credits, as-incurred USD, cost-change marker, per-project breakdown."""
+    slot = core["byday"].get(iso, {})
+    pj, color = core["pj"], core["color"]
+    rate = core["rate_for"](iso)
+    items = []
+    for pid, cr in slot.items():
+        if pid not in pj:
             continue
-        rate = rate_for(d)
-        items = []
-        for pid, cr in slot.items():
-            if pid not in pj:
-                continue
-            present.add(pid)
-            items.append({"pid": pid, "name": pj[pid]["name"], "slug": pj[pid]["slug"],
-                          "color": color[pid], "credits": int(round(cr)),
-                          "usd": usd(cr, rate)})
-        items.sort(key=lambda x: x["credits"], reverse=True)
-        tot_cr = sum(i["credits"] for i in items)
-        cells[d] = {"credits": tot_cr, "usd": usd(sum(slot.values()), rate), "projects": items}
+        items.append({"pid": pid, "name": pj[pid]["name"], "slug": pj[pid]["slug"],
+                      "color": color[pid], "credits": int(round(cr)), "usd": usd(cr, rate)})
+    items.sort(key=lambda x: x["credits"], reverse=True)
+    return {"dom": int(iso[8:10]), "iso": iso,
+            "is_today": iso == core["today"].isoformat(),
+            "credits": sum(i["credits"] for i in items),
+            "usd": usd(sum(slot.values()), rate),
+            "rate": rate, "change": core["change_on"].get(iso), "projects": items}
+
+
+def _legend_for(core: dict, isos) -> list:
+    """Per-project credit totals over a set of ISO dates, sorted desc, for the legend."""
+    pj, color, byday = core["pj"], core["color"], core["byday"]
+    tot: dict = {}
+    for d in isos:
+        for pid, cr in byday.get(d, {}).items():
+            if pid in pj:
+                tot[pid] = tot.get(pid, 0.0) + cr
+    leg = [{"name": pj[pid]["name"], "slug": pj[pid]["slug"], "color": color[pid],
+            "credits": int(round(cr))} for pid, cr in tot.items()]
+    leg.sort(key=lambda x: x["credits"], reverse=True)
+    return leg
+
+
+def _changes_for(core: dict, isos) -> list:
+    """Cost changes that fall on any of the given ISO dates, chronological."""
+    s = set(isos)
+    out = []
+    for d in sorted(core["change_on"]):
+        if d in s:
+            c = dict(core["change_on"][d])
+            c["date"] = d
+            c["dom"] = int(d[8:10])
+            out.append(c)
+    return out
+
+
+def _nav_tabs(view: str, month: str, week: str, year: str, start: str, end: str) -> list:
+    """The view switcher. Each tab remembers the current anchor so switching keeps your place."""
+    import urllib.parse as _up
+    def href(v, **kw):
+        q = {"view": v}
+        q.update({k: val for k, val in kw.items() if val})
+        return "/calendar?" + _up.urlencode(q)
+    return [
+        {"key": "month", "label": "Month", "href": href("month", month=month), "active": view == "month"},
+        {"key": "week", "label": "Week", "href": href("week", week=week), "active": view == "week"},
+        {"key": "year", "label": "Year", "href": href("year", year=year), "active": view == "year"},
+        {"key": "range", "label": "Range", "href": href("range", start=start, end=end), "active": view == "range"},
+        {"key": "schedule", "label": "Schedule", "href": href("schedule", start=start, end=end), "active": view == "schedule"},
+    ]
+
+
+def _month_isos(y: int, m: int) -> list:
+    import calendar as _cal
+    last = _cal.monthrange(y, m)[1]
+    return ["%04d-%02d-%02d" % (y, m, d) for d in range(1, last + 1)]
+
+
+def _shift_month(ym: str, delta: int) -> str:
+    yy, mm = int(ym[:4]), int(ym[5:7]) + delta
+    yy += (mm - 1) // 12
+    mm = (mm - 1) % 12 + 1
+    return "%04d-%02d" % (yy, mm)
+
+
+def calendar_data(con, view: str | None = None, month: str | None = None,
+                  week: str | None = None, year: str | None = None,
+                  start: str | None = None, end: str | None = None) -> dict:
+    """Credit & $ usage calendar in one of several views (month, week, year, range, schedule),
+    broken down by project and valued as-incurred (each day at the cost in effect that day)."""
+    import calendar as _cal
+    from datetime import date as _date, timedelta as _td
+    core = _cal_core(con)
+    months, today = core["months"], core["today"]
+    view = (view or "month").lower()
+    if view not in ("month", "week", "year", "range", "schedule"):
+        view = "month"
+
+    # Overall data bounds (extended to the furthest pre-announced change).
+    if months:
+        lo_day = _date.fromisoformat(months[0] + "-01")
+    else:
+        lo_day = today.replace(day=1)
+    hi_month = months[-1] if months else today.strftime("%Y-%m")
+    if core["pending"]:
+        hi_month = max(hi_month, core["pending"][-1][0][:7])
+    hy, hm = int(hi_month[:4]), int(hi_month[5:7])
+    hi_day = _date(hy, hm, _cal.monthrange(hy, hm)[1])
+
+    out = {"view": view, "has_data": bool(months or core["byday"]),
+           "tabs": _nav_tabs(view, month or "", week or "", year or "", start or "", end or ""),
+           "rate": core["cur_rate"], "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]}
+    if not out["has_data"]:
+        return out
 
     _cal.setfirstweekday(_cal.SUNDAY)
-    weeks = []
-    for wk in _cal.monthcalendar(y, m):
-        row = []
-        for dom in wk:
-            if dom == 0:
-                row.append(None)
-                continue
-            iso = "%04d-%02d-%02d" % (y, m, dom)
-            cell = cells.get(iso)
-            row.append({"dom": dom, "iso": iso, "is_today": iso == today.isoformat(),
-                        "credits": cell["credits"] if cell else 0,
-                        "usd": cell["usd"] if cell else 0.0,
-                        "projects": cell["projects"] if cell else []})
-        weeks.append(row)
 
-    # Month totals + per-project month totals (for the legend / summary).
-    mtot_cr = sum(c["credits"] for c in cells.values())
-    mtot_usd = sum(c["usd"] for c in cells.values())
-    legend = []
-    for pid in order:
-        if pid not in present:
-            continue
-        pcr = sum(sum(cr for p, cr in byday[d].items() if p == pid)
-                  for d in cells)  # credits this month for this project
-        legend.append({"name": pj[pid]["name"], "slug": pj[pid]["slug"],
-                       "color": color[pid], "credits": int(round(pcr))})
-    legend.sort(key=lambda x: x["credits"], reverse=True)
+    def grid_weeks(y, m, mini=False):
+        weeks = []
+        for wk in _cal.monthcalendar(y, m):
+            row = []
+            for dom in wk:
+                if dom == 0:
+                    row.append(None)
+                else:
+                    row.append(_day_cell(core, "%04d-%02d-%02d" % (y, m, dom)))
+            weeks.append(row)
+        return weeks
 
-    # Prev / next month navigation within the available range.
-    def shift(ym, delta):
-        yy, mm = int(ym[:4]), int(ym[5:7]) + delta
-        yy += (mm - 1) // 12
-        mm = (mm - 1) % 12 + 1
-        return "%04d-%02d" % (yy, mm)
-    prev_m, next_m = shift(month, -1), shift(month, 1)
-    lo, hi = (months[0], months[-1]) if months else (month, month)
-
-    return {"month": month, "label": _date(y, m, 1).strftime("%B %Y"),
-            "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-            "weeks": weeks, "legend": legend, "months": months,
-            "total_credits": mtot_cr, "total_usd": mtot_usd,
+    if view == "month":
+        if month not in months and months:
+            month = months[-1]
+        if not month:
+            month = today.strftime("%Y-%m")
+        y, m = int(month[:4]), int(month[5:7])
+        isos = _month_isos(y, m)
+        cells_flat = [_day_cell(core, d) for d in isos]
+        prev_m, next_m = _shift_month(month, -1), _shift_month(month, 1)
+        out.update({
+            "label": _date(y, m, 1).strftime("%B %Y"),
+            "weeks": grid_weeks(y, m),
+            "legend": _legend_for(core, isos),
+            "changes": _changes_for(core, isos),
+            "total_credits": sum(c["credits"] for c in cells_flat),
+            "total_usd": sum(c["usd"] for c in cells_flat),
             "prev": prev_m, "next": next_m,
-            "has_prev": prev_m >= lo, "has_next": next_m <= hi,
-            "has_data": bool(months)}
+            "has_prev": (prev_m >= months[0]) if months else False,
+            "has_next": next_m <= hi_month})
+        return out
+
+    if view == "week":
+        anchor = None
+        if week:
+            try:
+                anchor = _date.fromisoformat(week)
+            except ValueError:
+                anchor = None
+        if anchor is None:
+            anchor = _date.fromisoformat(max(core["byday"])) if core["byday"] else today
+        # Snap back to Sunday.
+        ws = anchor - _td(days=(anchor.weekday() + 1) % 7)
+        isos = [(ws + _td(days=i)).isoformat() for i in range(7)]
+        cells = [_day_cell(core, d) for d in isos]
+        we = ws + _td(days=6)
+        out.update({
+            "label": "Week of %s" % ws.strftime("%b %-d, %Y"),
+            "range_label": "%s \u2013 %s" % (ws.strftime("%b %-d"), we.strftime("%b %-d, %Y")),
+            "weeks": [cells],
+            "legend": _legend_for(core, isos),
+            "changes": _changes_for(core, isos),
+            "total_credits": sum(c["credits"] for c in cells),
+            "total_usd": sum(c["usd"] for c in cells),
+            "prev": (ws - _td(days=7)).isoformat(), "next": (ws + _td(days=7)).isoformat(),
+            "has_prev": ws > lo_day, "has_next": we < hi_day})
+        return out
+
+    if view == "year":
+        yr = None
+        if year:
+            try:
+                yr = int(year)
+            except ValueError:
+                yr = None
+        if yr is None:
+            yr = int((months[-1] if months else today.strftime("%Y-%m"))[:4])
+        mgrids = []
+        ytot_cr = ytot_usd = 0
+        for m in range(1, 13):
+            isos = _month_isos(yr, m)
+            mc = sum(_day_cell(core, d)["credits"] for d in isos)
+            mu = sum(_day_cell(core, d)["usd"] for d in isos)
+            ytot_cr += mc
+            ytot_usd += mu
+            mgrids.append({"month": "%04d-%02d" % (yr, m),
+                           "label": _date(yr, m, 1).strftime("%B"),
+                           "weeks": grid_weeks(yr, m, mini=True),
+                           "credits": mc, "usd": mu, "has": mc > 0})
+        yisos = [d for d in core["byday"] if d[:4] == "%04d" % yr]
+        lo_year = int(months[0][:4]) if months else yr
+        hi_year = int(hi_month[:4])
+        out.update({
+            "label": str(yr), "year": yr, "months_grid": mgrids,
+            "legend": _legend_for(core, yisos),
+            "changes": _changes_for(core, sorted(core["change_on"])),
+            "year_changes": [c for c in _changes_for(core, sorted(core["change_on"])) if c["date"][:4] == "%04d" % yr],
+            "total_credits": ytot_cr, "total_usd": ytot_usd,
+            "prev": str(yr - 1), "next": str(yr + 1),
+            "has_prev": yr > lo_year, "has_next": yr < hi_year})
+        out["changes"] = out["year_changes"]
+        return out
+
+    # range & schedule share a start/end window; default to the whole data span.
+    def parse(d, fallback):
+        try:
+            return _date.fromisoformat(d) if d else fallback
+        except ValueError:
+            return fallback
+    first_data = _date.fromisoformat(min(core["byday"])) if core["byday"] else lo_day
+    last_data = _date.fromisoformat(max(core["byday"])) if core["byday"] else today
+    s_d = parse(start, first_data)
+    e_d = parse(end, last_data)
+    if e_d < s_d:
+        s_d, e_d = e_d, s_d
+    span = (e_d - s_d).days
+    if span > 732:                                   # safety cap ~2 years
+        e_d = s_d + _td(days=732)
+    isos = [(s_d + _td(days=i)).isoformat() for i in range((e_d - s_d).days + 1)]
+
+    if view == "range":
+        cells = [_day_cell(core, d) for d in isos]
+        out.update({
+            "label": "%s \u2013 %s" % (s_d.strftime("%b %-d, %Y"), e_d.strftime("%b %-d, %Y")),
+            "start": s_d.isoformat(), "end": e_d.isoformat(),
+            "cells": cells,
+            "legend": _legend_for(core, isos),
+            "changes": _changes_for(core, isos),
+            "total_credits": sum(c["credits"] for c in cells),
+            "total_usd": sum(c["usd"] for c in cells),
+            "min": first_data.isoformat(), "max": last_data.isoformat()})
+        return out
+
+    # schedule: an agenda of only the days that had usage, within the window, chronological.
+    rowdays = []
+    for d in isos:
+        if d in core["byday"]:
+            rowdays.append(_day_cell(core, d))
+    for d in isos:                                   # include cost-change days even with no usage
+        if d in core["change_on"] and d not in core["byday"]:
+            rowdays.append(_day_cell(core, d))
+    rowdays.sort(key=lambda c: c["iso"])
+    import datetime as _dt
+    for c in rowdays:
+        c["weekday"] = _dt.date.fromisoformat(c["iso"]).strftime("%a")
+        c["datelabel"] = _dt.date.fromisoformat(c["iso"]).strftime("%b %-d, %Y")
+    out.update({
+        "label": "%s \u2013 %s" % (s_d.strftime("%b %-d, %Y"), e_d.strftime("%b %-d, %Y")),
+        "start": s_d.isoformat(), "end": e_d.isoformat(),
+        "days": rowdays,
+        "legend": _legend_for(core, isos),
+        "changes": _changes_for(core, isos),
+        "total_credits": sum(c["credits"] for c in rowdays),
+        "total_usd": sum(c["usd"] for c in rowdays),
+        "min": first_data.isoformat(), "max": last_data.isoformat()})
+    return out
 
 
 def cost_history(con) -> dict:

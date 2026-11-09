@@ -1,67 +1,117 @@
 {% extends "base.html" %}
+{% from "_cal_macros.html" import daycell, minicell, changesstrip, legendblock, totalcards %}
 {% block title %}Calendar{% endblock %}
 {% block content %}
 {% include "_syncbar.html" %}
 <div class="h1row">
   <h1>Credit &amp; $ usage calendar <span class="hdrnote">({{ tz }})</span></h1>
+  <span class="hdrnote">Dollars are valued <b>as incurred</b> &mdash; each day at the cost per 10,000 credits in effect that day. Cost changes are flagged on the day they take effect; click any project to dive in.</span>
+</div>
+
+<div class="caltabs">
+  {% for t in cal.tabs %}<a class="caltab{% if t.active %} active{% endif %}" href="{{ t.href }}">{{ t.label }}</a>{% endfor %}
 </div>
 
 {% if not cal.has_data %}
 <p class="muted">No credit usage has been recorded yet.</p>
 {% else %}
 
+{# ---------- MONTH & WEEK: aligned 7-column grid ---------- #}
+{% if cal.view in ['month', 'week'] %}
 <div class="calnav">
-  {% if cal.has_prev %}<a class="btn small" href="/calendar?month={{ cal.prev }}">&larr; Prev</a>{% else %}<span class="btn small disabled">&larr; Prev</span>{% endif %}
+  {% if cal.has_prev %}<a class="btn small" href="/calendar?view={{ cal.view }}&{{ 'month' if cal.view=='month' else 'week' }}={{ cal.prev }}">&larr; Prev</a>{% else %}<span class="btn small disabled">&larr; Prev</span>{% endif %}
   <span class="calmonth">{{ cal.label }}</span>
-  {% if cal.has_next %}<a class="btn small" href="/calendar?month={{ cal.next }}">Next &rarr;</a>{% else %}<span class="btn small disabled">Next &rarr;</span>{% endif %}
+  {% if cal.has_next %}<a class="btn small" href="/calendar?view={{ cal.view }}&{{ 'month' if cal.view=='month' else 'week' }}={{ cal.next }}">Next &rarr;</a>{% else %}<span class="btn small disabled">Next &rarr;</span>{% endif %}
 </div>
-
-<div class="cards">
-  <div class="card"><div class="k">Credits this month</div><div class="v">{{ cal.total_credits | n0 }}</div></div>
-  <div class="card"><div class="k">USD this month (as incurred)</div><div class="v">{{ cal.total_usd | money }}</div></div>
-</div>
-
+{{ totalcards(cal) }}
+{{ changesstrip(cal.changes, '') }}
 <div class="calwrap">
   <div class="calgrid">
     {% for wd in cal.weekdays %}<div class="calhead">{{ wd }}</div>{% endfor %}
-    {% for wk in cal.weeks %}{% for cell in wk %}
-      {% if cell is none %}
-      <div class="calcell empty"></div>
-      {% else %}
-      <div class="calcell{% if cell.is_today %} today{% endif %}{% if not cell.projects %} blank{% endif %}">
-        <div class="calcelltop">
-          <span class="caldom">{{ cell.dom }}</span>
-          {% if cell.projects %}<span class="caltot"><b>{{ cell.credits | kc }}</b> &middot; {{ cell.usd | money }}</span>{% endif %}
-        </div>
-        {% if cell.projects %}
-        <div class="calprojs">
-          {% for p in cell.projects %}
-          <div class="calproj" title="{{ p.name }} — {{ p.credits | n0 }} credits · {{ p.usd | money }}">
-            <span class="caldot" style="background:{{ p.color }}"></span>
-            <span class="calname">{{ p.name }}</span>
-            <span class="calnum">{{ p.credits | kc }}</span>
-            <span class="calusd">{{ p.usd | money }}</span>
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-      {% endif %}
-    {% endfor %}{% endfor %}
+    {% for wk in cal.weeks %}{% for cell in wk %}{{ daycell(cell) }}{% endfor %}{% endfor %}
   </div>
 </div>
+{{ legendblock(cal.legend, 'Projects this ' + cal.view) }}
 
-{% if cal.legend %}
-<h2>Projects this month</h2>
-<div class="callegend">
-  {% for p in cal.legend %}
-  <a class="calleg" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits this month">
-    <span class="caldot" style="background:{{ p.color }}"></span>
-    <span class="calname">{{ p.name }}</span>
-    <span class="calnum">{{ p.credits | n0 }}</span>
-  </a>
+{# ---------- YEAR: 12 mini-months ---------- #}
+{% elif cal.view == 'year' %}
+<div class="calnav">
+  {% if cal.has_prev %}<a class="btn small" href="/calendar?view=year&year={{ cal.prev }}">&larr; {{ cal.prev }}</a>{% else %}<span class="btn small disabled">&larr; Prev</span>{% endif %}
+  <span class="calmonth">{{ cal.label }}</span>
+  {% if cal.has_next %}<a class="btn small" href="/calendar?view=year&year={{ cal.next }}">{{ cal.next }} &rarr;</a>{% else %}<span class="btn small disabled">Next &rarr;</span>{% endif %}
+</div>
+{{ totalcards(cal) }}
+{{ changesstrip(cal.changes, '') }}
+<div class="calyeargrid">
+  {% for mg in cal.months_grid %}
+  <div class="minimonth{% if not mg.has %} off{% endif %}">
+    <a class="minihead" href="/calendar?view=month&month={{ mg.month }}" title="Open {{ mg.label }} {{ cal.year }}">
+      <span class="minititle">{{ mg.label }}</span>
+      {% if mg.has %}<span class="minitot">{{ mg.credits | kc }} &middot; {{ mg.usd | money }}</span>{% endif %}
+    </a>
+    <div class="minigrid">
+      {% for wd in cal.weekdays %}<div class="minihd">{{ wd[0] }}</div>{% endfor %}
+      {% for wk in mg.weeks %}{% for cell in wk %}{{ minicell(cell) }}{% endfor %}{% endfor %}
+    </div>
+  </div>
   {% endfor %}
 </div>
+{{ legendblock(cal.legend, 'Projects in ' + cal.label) }}
+
+{# ---------- RANGE: pick start/end, week-chunked grid ---------- #}
+{% elif cal.view == 'range' %}
+<form class="calrangeform" method="get" action="/calendar">
+  <input type="hidden" name="view" value="range">
+  <label>From <input type="date" name="start" value="{{ cal.start }}" min="{{ cal.min }}" max="{{ cal.max }}"></label>
+  <label>To <input type="date" name="end" value="{{ cal.end }}" min="{{ cal.min }}" max="{{ cal.max }}"></label>
+  <button class="btn small" type="submit">Show</button>
+  <span class="calmonth">{{ cal.label }}</span>
+</form>
+{{ totalcards(cal) }}
+{{ changesstrip(cal.changes, '') }}
+<div class="calwrap">
+  <div class="calgrid">
+    {% for row in cal.cells | batch(7) %}{% for cell in row %}{{ daycell(cell) }}{% endfor %}{% endfor %}
+  </div>
+</div>
+{{ legendblock(cal.legend, 'Projects in range') }}
+
+{# ---------- SCHEDULE: agenda of active days ---------- #}
+{% elif cal.view == 'schedule' %}
+<form class="calrangeform" method="get" action="/calendar">
+  <input type="hidden" name="view" value="schedule">
+  <label>From <input type="date" name="start" value="{{ cal.start }}" min="{{ cal.min }}" max="{{ cal.max }}"></label>
+  <label>To <input type="date" name="end" value="{{ cal.end }}" min="{{ cal.min }}" max="{{ cal.max }}"></label>
+  <button class="btn small" type="submit">Show</button>
+  <span class="calmonth">{{ cal.label }}</span>
+</form>
+{{ totalcards(cal) }}
+{% if cal.days %}
+<div class="scroll"><table class="grid">
+  <thead><tr><th>Day</th><th class="num">Credits</th><th class="num">USD</th><th>Projects</th></tr></thead>
+  <tbody>
+    {% for d in cal.days %}
+    <tr{% if d.is_today %} class="today-row"{% endif %}>
+      <td class="date"><b>{{ d.weekday }}</b> {{ d.datelabel }}{% if d.change %}<br><span class="schgchg {{ 'up' if d.change.up else 'down' }}" title="was ${{ d.change.from | n2 }}/10k{% if d.change.pending %} — scheduled{% endif %}">{{ '▲' if d.change.up else '▼' }} cost {{ 'rose' if d.change.up else 'fell' }} to ${{ d.change.to | n2 }}/10k{% if d.change.pending %} (sched){% endif %}</span>{% endif %}</td>
+      <td class="num">{{ d.credits | n0 }}</td>
+      <td class="num">{{ d.usd | money }}</td>
+      <td>
+        <div class="schprojs">
+          {% for p in d.projects %}
+          <a class="schchip" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits · {{ p.usd | money }} (click to dive in)">
+            <span class="caldot" style="background:{{ p.color }}"></span>{{ p.name }} <span class="calnum">{{ p.credits | kc }}</span> <span class="calusd">{{ p.usd | money }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<p class="muted">No usage in this range.</p>
+{% endif %}
+{{ legendblock(cal.legend, 'Projects in range') }}
 {% endif %}
 
 {% endif %}

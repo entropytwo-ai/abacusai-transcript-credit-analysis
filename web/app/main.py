@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.12"
+__version__ = "1.0.13"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -225,9 +225,12 @@ def dive_all(request: Request, sort: str = "credits-desc", user=Depends(user_of)
 
 
 @app.get("/calendar", response_class=HTMLResponse)
-def calendar_view(request: Request, month: str = "", user=Depends(user_of), con=Depends(get_con)):
+def calendar_view(request: Request, view: str = "month", month: str = "", week: str = "",
+                  year: str = "", start: str = "", end: str = "",
+                  user=Depends(user_of), con=Depends(get_con)):
     db.apply_due_rates(con)
-    cal = report.calendar_data(con, month or None)
+    cal = report.calendar_data(con, view=view or "month", month=month or None, week=week or None,
+                               year=year or None, start=start or None, end=end or None)
     return render(request, "calendar.html", user, cal=cal, tz=report.tz_label(con), sync=sync.status())
 
 

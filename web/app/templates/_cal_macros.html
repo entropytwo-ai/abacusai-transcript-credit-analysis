@@ -1,0 +1,78 @@
+{% macro ratebadge(change) %}
+<div class="calrate {{ 'up' if change.up else 'down' }}{% if change.pending %} pending{% endif %}" title="Cost {{ 'rose' if change.up else 'fell' }} to ${{ change.to | n2 }} per 10,000 credits (was ${{ change.from | n2 }}, {{ change.pct | round(1) }}%){% if change.pending %} — pre-announced / scheduled{% endif %}{% if change.note %} — {{ change.note }}{% endif %}">
+  {{ '▲' if change.up else '▼' }} ${{ change.to | n2 }}/10k{% if change.pending %} <em>sched</em>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro daycell(cell) %}
+{% if cell is none %}
+<div class="calcell empty"></div>
+{% else %}
+<div class="calcell{% if cell.is_today %} today{% endif %}{% if not cell.projects and not cell.change %} blank{% endif %}">
+  <div class="calcelltop">
+    <span class="caldom">{{ cell.dom }}</span>
+    {% if cell.projects %}<span class="caltot" title="Day total, valued at ${{ cell.rate | n2 }} per 10,000 credits"><b>{{ cell.credits | kc }}</b> &middot; {{ cell.usd | money }}</span>{% endif %}
+  </div>
+  {% if cell.change %}{{ ratebadge(cell.change) }}{% endif %}
+  {% if cell.projects %}
+  <div class="calprojs">
+    {% for p in cell.projects %}
+    <a class="calproj" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits · {{ p.usd | money }} (click to dive in)">
+      <span class="caldot" style="background:{{ p.color }}"></span>
+      <span class="calname">{{ p.name }}</span>
+      <span class="calnum">{{ p.credits | kc }}</span>
+      <span class="calusd">{{ p.usd | money }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro minicell(cell) %}
+{% if cell is none %}
+<div class="minicell empty"></div>
+{% else %}
+<div class="minicell{% if cell.is_today %} today{% endif %}{% if cell.change %} chg{% endif %}" title="{{ cell.iso }}{% if cell.credits %} — {{ cell.credits | n0 }} credits · {{ cell.usd | money }}{% endif %}{% if cell.change %} — cost {{ 'rose' if cell.change.up else 'fell' }} to ${{ cell.change.to | n2 }}/10k{% endif %}">
+  <span class="minidom">{{ cell.dom }}</span>
+  {% if cell.credits %}<span class="minicr">{{ cell.credits | kc }}</span>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro changesstrip(changes, prefix) %}
+{% if changes %}
+<div class="calchanges">
+  <span class="k">Cost {{ 'change' if changes | length == 1 else 'changes' }}:</span>
+  {% for c in changes %}
+  <span class="chg {{ 'up' if c.up else 'down' }}" title="{{ 'Increase' if c.up else 'Decrease' }} of {{ c.pct | round(1) }}%{% if c.pending %} (pre-announced / scheduled){% endif %}">
+    {{ c.date }}: {{ '▲' if c.up else '▼' }} ${{ c.from | n2 }} &rarr; ${{ c.to | n2 }}/10k{% if c.pending %} <em>scheduled</em>{% endif %}
+  </span>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro legendblock(legend, title) %}
+{% if legend %}
+<h2>{{ title }}</h2>
+<div class="callegend">
+  {% for p in legend %}
+  <a class="calleg" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits (click to dive in)">
+    <span class="caldot" style="background:{{ p.color }}"></span>
+    <span class="calname">{{ p.name }}</span>
+    <span class="calnum">{{ p.credits | n0 }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro totalcards(cal) %}
+<div class="cards">
+  <div class="card"><div class="k">Credits</div><div class="v">{{ cal.total_credits | n0 }}</div></div>
+  <div class="card"><div class="k">USD (as incurred)</div><div class="v">{{ cal.total_usd | money }}</div></div>
+  <div class="card"><div class="k">Cost per 10,000 credits now</div><div class="v">${{ cal.rate | n2 }}</div></div>
+</div>
+{% endmacro %}
