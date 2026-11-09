@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
+- A **Cost per 10,000 credits over time** chart at the bottom of the dashboard that tracks credit inflation. Because Abacus.AI does not publish a live price for credits, the chart can't update on its own; instead it records a new dated point automatically whenever the owner changes the cost in **Settings**, so the step line builds up the inflation curve as prices rise over time. A baseline point is seeded from the current cost on first run, and the current cost plus the percentage increase since the first recorded point are shown above the chart.
 - A **GitHub repo link** (small GitHub-mark icon) next to each project name on the summary dashboard, the all-projects dive-in, and each single project page. Repo URLs are editable from the Projects admin page (new **GitHub repo URL** field) and are stored per project in the database, which stays out of GitHub like the rest of your data.
 - An **Active times per day** chart on the dashboard and on each project dive-in: one dot per turn placed by the time of day you prompted (in the display timezone), with later-in-the-day times higher, hour marks every three hours, horizontal gridlines and vertical day separators.
 - **Time Spent** (agent run time) per project as a dashboard column, and **Turns** plus **Time Spent** added to the statistical summary, with a short explanation of Turns, Time Spent and Words (including a Moby-Dick scale reference for word counts).

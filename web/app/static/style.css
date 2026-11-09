@@ -61,6 +61,12 @@ ul.note li { margin:.3rem 0; }
 .actchart .yaxis i.h { writing-mode:horizontal-tb; transform:translateY(-50%); bottom:auto; left:1px; height:auto; }
 .actchart .gridlines { position:absolute; top:.5rem; left:.5rem; right:.5rem; bottom:.5rem; pointer-events:none; z-index:0; }
 .actchart .gridlines i.gl { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--line); opacity:.55; }
+.costchart { border:1px solid var(--line); border-radius:6px; padding:.5rem; overflow-x:auto; }
+.costchart svg { width:100%; min-width:520px; height:auto; display:block; }
+.costchart .gl { stroke:var(--line); stroke-dasharray:4 4; opacity:.6; }
+.costchart .cl { stroke:var(--hi); stroke-width:2.5; stroke-linejoin:round; }
+.costchart .cd { fill:var(--hi); stroke:var(--bg); stroke-width:2; }
+.costchart .yl, .costchart .xl { fill:var(--muted); font-size:13px; }
 .h1row { display:flex; align-items:baseline; flex-wrap:wrap; gap:.3rem .7rem; }
 .hdrnote { color:var(--muted); font-size:.82rem; font-weight:normal; }
 .ghmark { display:inline-block; vertical-align:-2px; color:var(--muted); }

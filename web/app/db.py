@@ -70,6 +70,12 @@ CREATE TABLE IF NOT EXISTS sync_runs (
     message     TEXT,
     stats       TEXT DEFAULT '{}'
 );
+CREATE TABLE IF NOT EXISTS rate_history (
+    id         INTEGER PRIMARY KEY,
+    changed_at TEXT NOT NULL,                 -- UTC ISO timestamp the cost took effect
+    rate       REAL NOT NULL,                 -- USD per 10,000 credits
+    source     TEXT NOT NULL DEFAULT 'settings' -- initial | settings
+);
 CREATE INDEX IF NOT EXISTS idx_turns_conv ON turns(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conv_project ON conversations(project_id);
 """
@@ -100,6 +106,19 @@ def init() -> None:
         con.executescript(SCHEMA)
         for k, v in DEFAULT_SETTINGS.items():
             con.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (k, v))
+        # Seed the cost-history baseline so the "cost per 10,000 credits" chart has a
+        # starting point. Later changes are appended automatically when the rate is saved.
+        if not con.execute("SELECT 1 FROM rate_history LIMIT 1").fetchone():
+            rate = float(con.execute("SELECT value FROM settings WHERE key='rate_usd_per_10k'").fetchone()["value"])
+            con.execute("INSERT INTO rate_history(changed_at, rate, source) VALUES (datetime('now'), ?, 'initial')", (rate,))
+
+
+def record_rate(con, rate: float, source: str = "settings") -> None:
+    """Append a cost-per-10,000-credits data point only if it differs from the latest one."""
+    last = con.execute("SELECT rate FROM rate_history ORDER BY changed_at DESC, id DESC LIMIT 1").fetchone()
+    if last is None or abs(float(last["rate"]) - float(rate)) > 1e-9:
+        con.execute("INSERT INTO rate_history(changed_at, rate, source) VALUES (datetime('now'), ?, ?)",
+                    (float(rate), source))
 
 
 def get_setting(con, key: str) -> str:

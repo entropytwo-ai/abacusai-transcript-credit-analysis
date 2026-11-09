@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, pdf, report, sync
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -191,6 +191,7 @@ def summary(request: Request, sort: str = "credits-desc", user=Depends(user_of),
     ctx["daily"] = days
     ctx["daily_max"] = max((d["credits"] for d in days), default=0)
     ctx["activity"] = report.active_times(con)
+    ctx["cost"] = report.cost_history(con)
     ctx["tz"] = report.tz_label(con)
     return render(request, "summary.html", user, **ctx)
 
@@ -400,6 +401,7 @@ def admin_settings_save(rate_usd_per_10k: float = Form(...), tokens_per_word: fl
     if rate_usd_per_10k <= 0 or tokens_per_word <= 0 or not 0 <= sync_hour_utc <= 23:
         raise HTTPException(400, "Values must be positive; sync hour 0-23")
     db.set_setting(con, "rate_usd_per_10k", str(rate_usd_per_10k))
+    db.record_rate(con, rate_usd_per_10k, "settings")  # track cost-per-10k changes over time
     db.set_setting(con, "tokens_per_word", str(tokens_per_word))
     db.set_setting(con, "brief_llm", brief_llm.strip() or db.DEFAULT_SETTINGS["brief_llm"])
     db.set_setting(con, "sync_hour_utc", str(sync_hour_utc))

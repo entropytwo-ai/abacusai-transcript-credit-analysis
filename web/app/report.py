@@ -173,6 +173,69 @@ def daily(con) -> list:
     return [{"day": day, "credits": agg[day]} for day in sorted(agg)]
 
 
+def cost_history(con) -> dict:
+    """Cost per 10,000 credits over time, as ready-to-render SVG geometry for a step chart.
+
+    Every point is a recorded change to rate_usd_per_10k; the line holds flat between
+    changes and steps on each change, then runs flat to today at the current cost.
+    """
+    from datetime import date as _date, timedelta
+    zone = _zone(con)
+    rows = con.execute("SELECT changed_at, rate FROM rate_history ORDER BY changed_at, id").fetchall()
+    pts = []
+    for r in rows:
+        d = local_date(r["changed_at"], zone)
+        rate = float(r["rate"])
+        if not d:
+            continue
+        if pts and pts[-1]["date"] == d:
+            pts[-1]["rate"] = rate            # same day: keep the latest value
+        else:
+            pts.append({"date": d, "rate": rate})
+    if not pts:
+        return {}
+
+    first = _date.fromisoformat(pts[0]["date"])
+    today = datetime.now(zone).date()
+    last = _date.fromisoformat(pts[-1]["date"])
+    end = max(today, last)
+    domain_end = end if end > first else first + timedelta(days=1)
+    span = (domain_end - first).days or 1
+
+    W, H = 1000, 300
+    PL, PR, PT, PB = 64, 24, 24, 44
+    pw, ph = W - PL - PR, H - PT - PB
+    ybot = PT + ph
+    top_val = (max(p["rate"] for p in pts) * 1.25) or 1.0
+
+    def X(d):
+        return PL + (d - first).days / span * pw
+
+    def Y(rate):
+        return ybot - (rate / top_val) * ph
+
+    seg = ["M %.1f,%.1f" % (X(first), Y(pts[0]["rate"]))]
+    prev = pts[0]["rate"]
+    for p in pts[1:]:
+        px = X(_date.fromisoformat(p["date"]))
+        seg.append("L %.1f,%.1f L %.1f,%.1f" % (px, Y(prev), px, Y(p["rate"])))
+        prev = p["rate"]
+    seg.append("L %.1f,%.1f" % (X(domain_end), Y(prev)))   # flat to today
+    path = " ".join(seg)
+
+    dots = [{"x": round(X(_date.fromisoformat(p["date"])), 1), "y": round(Y(p["rate"]), 1),
+             "date": p["date"], "rate": p["rate"]} for p in pts]
+    ygrid = [{"y": round(ybot - f * ph, 1), "label": "$%.2f" % (top_val * f)} for f in (0, .25, .5, .75, 1.0)]
+    xlabels = [{"x": round(X(first), 1), "label": pts[0]["date"], "anchor": "start"},
+               {"x": round(X(domain_end), 1), "label": end.isoformat(), "anchor": "end"}]
+
+    base, cur = pts[0]["rate"], pts[-1]["rate"]
+    return {"path": path, "dots": dots, "ygrid": ygrid, "xlabels": xlabels,
+            "w": W, "h": H, "current": cur, "first": base,
+            "inflation_pct": ((cur - base) / base * 100) if base else 0.0,
+            "changes": len(pts) - 1}
+
+
 def active_times(con, project_id: int | None = None) -> list:
     """Per-day list of turn start-times (display timezone) for the activity scatter chart.
 

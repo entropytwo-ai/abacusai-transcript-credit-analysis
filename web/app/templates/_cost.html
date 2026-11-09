@@ -1,0 +1,22 @@
+{# Cost per 10,000 credits over time. A step line: flat between changes, stepping on each
+   recorded change, then flat to today at the current cost. Points come from rate_history. #}
+{% if cost %}
+<h2>Cost per 10,000 credits over time ({{ tz }})</h2>
+<p class="note">Current cost <b>${{ "%.2f"|format(cost.current) }}</b> per 10,000 credits{% if cost.changes %} &middot; <b>{{ "%+.1f"|format(cost.inflation_pct) }}%</b> vs the first recorded cost of ${{ "%.2f"|format(cost.first) }} ({{ cost.changes }} change{{ '' if cost.changes == 1 else 's' }} recorded){% else %} &middot; baseline recorded &mdash; the line steps up here whenever the cost changes{% endif %}.</p>
+<div class="costchart">
+  <svg viewBox="0 0 {{ cost.w }} {{ cost.h }}" role="img" aria-label="Cost per 10,000 credits over time">
+    {% for g in cost.ygrid %}
+    <line class="gl" x1="64" y1="{{ g.y }}" x2="{{ cost.w - 24 }}" y2="{{ g.y }}"></line>
+    <text class="yl" x="58" y="{{ g.y + 4 }}" text-anchor="end">{{ g.label }}</text>
+    {% endfor %}
+    <path class="cl" d="{{ cost.path }}" fill="none"></path>
+    {% for d in cost.dots %}
+    <circle class="cd" cx="{{ d.x }}" cy="{{ d.y }}" r="5"><title>{{ d.date }}: ${{ "%.2f"|format(d.rate) }} per 10,000 credits</title></circle>
+    {% endfor %}
+    {% for x in cost.xlabels %}
+    <text class="xl" x="{{ x.x }}" y="{{ cost.h - 16 }}" text-anchor="{{ x.anchor }}">{{ x.label }}</text>
+    {% endfor %}
+  </svg>
+</div>
+<p class="note">Abacus.AI does not publish a live price for credits, so this chart can&rsquo;t update on its own.{% if user.role == 'owner' %} When the credit cost changes, enter the new value in <a href="/admin/settings">Settings &rarr; Cost per 10,000 credits</a> and a dated point is added here automatically, building the inflation curve over time.{% else %} The owner records each new cost in Settings and a dated point is added here automatically.{% endif %}</p>
+{% endif %}
