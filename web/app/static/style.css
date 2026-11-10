@@ -71,11 +71,11 @@ ul.note li { margin:.3rem 0; }
 .chart .bar { flex:1 0 18px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; }
 .chart .bar span { display:block; width:100%; background:linear-gradient(var(--hi), #1d7a3a); border-radius:2px 2px 0 0; min-height:1px; }
 .chart .bar .barval { font-weight:700; font-size:.9rem; color:var(--hi); margin-bottom:3px; white-space:nowrap; font-family:ui-monospace, Menlo, Consolas, monospace; }
-.chart .bar i { font-style:normal; font-size:.78rem; color:var(--muted); height:50px; margin-top:4px; white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg); }
+.chart .bar i { font-style:normal; font-size:.78rem; color:var(--muted); height:76px; margin-top:4px; white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg); }
 .actchart { position:relative; display:flex; align-items:stretch; gap:0; height:280px; padding:.5rem; border:1px solid var(--line); border-radius:6px; overflow-x:auto; }
 .actchart .daycol { position:relative; flex:1 0 15px; min-width:15px; border-left:1px solid var(--line); }
 .actchart .daycol .dot { position:absolute; left:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px; border-radius:50%; background:var(--hi); opacity:.75; box-shadow:0 0 3px rgba(57,255,122,.55); z-index:2; }
-.actchart .daycol i { position:absolute; bottom:0; left:50%; transform:translateX(-50%) rotate(180deg); writing-mode:vertical-rl; font-style:normal; font-size:.78rem; color:var(--muted); height:50px; white-space:nowrap; }
+.actchart .daycol i { position:absolute; bottom:0; left:50%; transform:translateX(-50%) rotate(180deg); writing-mode:vertical-rl; font-style:normal; font-size:.78rem; color:var(--muted); height:76px; white-space:nowrap; }
 .actchart .yaxis { flex:0 0 22px; min-width:22px; border-left:0; border-right:1px solid var(--line); margin-right:2px; }
 .actchart .yaxis i.h { writing-mode:horizontal-tb; transform:translateY(-50%); bottom:auto; left:1px; height:auto; }
 .actchart .gridlines { position:absolute; top:.5rem; left:.5rem; right:.5rem; bottom:.5rem; pointer-events:none; z-index:0; }

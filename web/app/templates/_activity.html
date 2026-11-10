@@ -5,12 +5,12 @@
   {# Horizontal gridlines span the full plot width, one per hour label (every 3h). #}
   <div class="gridlines" aria-hidden="true">
     {% for hr in [24, 21, 18, 15, 12, 9, 6, 3, 0] %}
-    <i class="gl" style="top: calc((100% - 54px) * {{ (24 - hr) / 24 }})"></i>
+    <i class="gl" style="top: calc((100% - 80px) * {{ (24 - hr) / 24 }})"></i>
     {% endfor %}
   </div>
   <div class="daycol yaxis" aria-hidden="true">
     {% for hr in [24, 21, 18, 15, 12, 9, 6, 3, 0] %}
-    <i class="h" style="top: calc((100% - 54px) * {{ (24 - hr) / 24 }})">{{ "%02d" | format(hr) }}</i>
+    <i class="h" style="top: calc((100% - 80px) * {{ (24 - hr) / 24 }})">{{ "%02d" | format(hr) }}</i>
     {% endfor %}
   </div>
   {% for d in activity %}
@@ -18,8 +18,8 @@
        data-day="{{ d.day }}" data-count="{{ d.count }}"
        aria-label="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }} — click to zoom in"
        title="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }} — click to zoom in">
-    {% for dot in d.dots %}<span class="dot" data-frac="{{ dot.frac }}" data-label="{{ dot.label }}" style="top: calc((100% - 54px) * {{ 1 - dot.frac }})" title="{{ d.day }} {{ dot.label }}"></span>{% endfor %}
-    <i>{{ d.day[5:] }}</i>
+    {% for dot in d.dots %}<span class="dot" data-frac="{{ dot.frac }}" data-label="{{ dot.label }}" style="top: calc((100% - 80px) * {{ 1 - dot.frac }})" title="{{ d.day }} {{ dot.label }}"></span>{% endfor %}
+    <i>{{ d.dow }} {{ d.day[5:] }}</i>
   </div>
   {% endfor %}
 </div>

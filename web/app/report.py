@@ -170,7 +170,8 @@ def daily(con) -> list:
         day = local_date(r["bot_ts"], zone)
         if day:
             agg[day] += r["credits"] or 0
-    return [{"day": day, "credits": agg[day]} for day in sorted(agg)]
+    return [{"day": day, "dow": datetime.fromisoformat(day).strftime("%a"),
+             "credits": agg[day]} for day in sorted(agg)]
 
 
 def _project_color(i: int, n: int) -> str:
@@ -730,5 +731,6 @@ def active_times(con, project_id: int | None = None) -> list:
     out = []
     for day in sorted(byday):
         dots = sorted(byday[day], key=lambda d: d["frac"])
-        out.append({"day": day, "dots": dots, "count": len(dots)})
+        out.append({"day": day, "dow": datetime.fromisoformat(day).strftime("%a"),
+                    "dots": dots, "count": len(dots)})
     return out
