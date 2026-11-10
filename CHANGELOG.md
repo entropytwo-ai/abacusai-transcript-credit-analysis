@@ -20,7 +20,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - PDF exports for the dashboard (`/export/summary.pdf`) and the dive-in view (`/export/dive.pdf`), with **Download PDF** / **Download dive PDF** buttons next to the CSV ones. Built with `fpdf2` (pure Python, no system libraries) so a fresh install keeps working.
 
 ### Changed
-- The **Credits per day** chart now shows the **credit total on top of each bar** (compact form, e.g. `48.8k`), so you can read the day's figure without hovering.
+- The **Credits per day** chart now shows the **credit total on top of each bar** (compact form, e.g. `48.8k`) in a larger, bolder font, so you can read the day's figure without hovering.
 - Calendar **project dots now carry a texture pattern** in addition to their color (diagonal, horizontal and cross-hatch stripes, and a bullseye), assigned per project and shown everywhere the dot appears — day cells, the legend and the Schedule view. Colors spread around the hue wheel can land close together when there are many projects; the pattern is a second cue so projects are easier to tell apart.
 - The **Active times per day** chart is now **clickable**: click (or focus and press Enter/Space on) any day column to **zoom into that single day** in a popup with a tall, readable hour axis, the day's dots spread out, and the full list of turn times. Step through days with the **‹ / ›** buttons or the arrow keys, and dismiss with the close button, a backdrop click, or `Esc`.
 - Larger axis labels on the **Credits per day** and **Active times per day** charts: the date labels on both and the hour labels on the activity chart are now bigger and easier to read.
