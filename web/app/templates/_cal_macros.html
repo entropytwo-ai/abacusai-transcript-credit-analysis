@@ -18,7 +18,7 @@
   <div class="calprojs">
     {% for p in cell.projects %}
     <a class="calproj" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits · {{ p.usd | money }} (click to dive in)">
-      <span class="caldot" style="background:{{ p.color }}"></span>
+      <span class="caldot pat-{{ p.pat }}" style="background-color:{{ p.color }}"></span>
       <span class="calname">{{ p.name }}</span>
       <span class="calnum">{{ p.credits | kc }}</span>
       <span class="calusd">{{ p.usd | money }}</span>
@@ -60,7 +60,7 @@
 <div class="callegend">
   {% for p in legend %}
   <a class="calleg" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits (click to dive in)">
-    <span class="caldot" style="background:{{ p.color }}"></span>
+    <span class="caldot pat-{{ p.pat }}" style="background-color:{{ p.color }}"></span>
     <span class="calname">{{ p.name }}</span>
     <span class="calnum">{{ p.credits | n0 }}</span>
   </a>

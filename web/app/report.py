@@ -179,6 +179,16 @@ def _project_color(i: int, n: int) -> str:
     return "hsl(%d 65%% 62%%)" % int(hue)
 
 
+# Number of distinct dot textures. A second cue on top of color so projects whose
+# hues land close together on the wheel are still easy to tell apart.
+CAL_PATTERNS = 6
+
+
+def _project_pattern(i: int) -> int:
+    """Texture index (0..CAL_PATTERNS-1) for a project; cycles so adjacent projects differ."""
+    return i % CAL_PATTERNS
+
+
 def calendar_months(con) -> list:
     """Sorted list of 'YYYY-MM' months that have any credit usage (display timezone)."""
     zone = _zone(con)
@@ -206,6 +216,7 @@ def _cal_core(con) -> dict:
     order = list(pj.keys())                         # already credits-desc
     n = len(order)
     color = {pid: _project_color(i, n) for i, pid in enumerate(order)}
+    pattern = {pid: _project_pattern(i) for i, pid in enumerate(order)}
 
     rows = con.execute("""
         SELECT c.project_id AS pid, t.bot_ts AS bot_ts, t.credits AS credits FROM turns t
@@ -255,21 +266,22 @@ def _cal_core(con) -> dict:
         return _rate_at(full_sched, day, cur_rate)
 
     return {"zone": zone, "cur_rate": cur_rate, "pj": pj, "order": order, "color": color,
-            "byday": byday, "today": today, "months": months, "pending": pending,
-            "change_on": change_on, "rate_for": rate_for}
+            "pattern": pattern, "byday": byday, "today": today, "months": months,
+            "pending": pending, "change_on": change_on, "rate_for": rate_for}
 
 
 def _day_cell(core: dict, iso: str) -> dict:
     """One calendar day: credits, as-incurred USD, cost-change marker, per-project breakdown."""
     slot = core["byday"].get(iso, {})
-    pj, color = core["pj"], core["color"]
+    pj, color, pattern = core["pj"], core["color"], core["pattern"]
     rate = core["rate_for"](iso)
     items = []
     for pid, cr in slot.items():
         if pid not in pj:
             continue
         items.append({"pid": pid, "name": pj[pid]["name"], "slug": pj[pid]["slug"],
-                      "color": color[pid], "credits": int(round(cr)), "usd": usd(cr, rate)})
+                      "color": color[pid], "pat": pattern[pid],
+                      "credits": int(round(cr)), "usd": usd(cr, rate)})
     items.sort(key=lambda x: x["credits"], reverse=True)
     return {"dom": int(iso[8:10]), "iso": iso,
             "dow": datetime.fromisoformat(iso).strftime("%a"),
@@ -281,14 +293,14 @@ def _day_cell(core: dict, iso: str) -> dict:
 
 def _legend_for(core: dict, isos) -> list:
     """Per-project credit totals over a set of ISO dates, sorted desc, for the legend."""
-    pj, color, byday = core["pj"], core["color"], core["byday"]
+    pj, color, pattern, byday = core["pj"], core["color"], core["pattern"], core["byday"]
     tot: dict = {}
     for d in isos:
         for pid, cr in byday.get(d, {}).items():
             if pid in pj:
                 tot[pid] = tot.get(pid, 0.0) + cr
     leg = [{"name": pj[pid]["name"], "slug": pj[pid]["slug"], "color": color[pid],
-            "credits": int(round(cr))} for pid, cr in tot.items()]
+            "pat": pattern[pid], "credits": int(round(cr))} for pid, cr in tot.items()]
     leg.sort(key=lambda x: x["credits"], reverse=True)
     return leg
 

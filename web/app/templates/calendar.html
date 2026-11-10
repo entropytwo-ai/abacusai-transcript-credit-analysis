@@ -99,7 +99,7 @@
         <div class="schprojs">
           {% for p in d.projects %}
           <a class="schchip" href="/project/{{ p.slug }}" title="{{ p.name }} — {{ p.credits | n0 }} credits · {{ p.usd | money }} (click to dive in)">
-            <span class="caldot" style="background:{{ p.color }}"></span>{{ p.name }} <span class="calnum">{{ p.credits | kc }}</span> <span class="calusd">{{ p.usd | money }}</span>
+            <span class="caldot pat-{{ p.pat }}" style="background-color:{{ p.color }}"></span>{{ p.name }} <span class="calnum">{{ p.credits | kc }}</span> <span class="calusd">{{ p.usd | money }}</span>
           </a>
           {% endfor %}
         </div>
