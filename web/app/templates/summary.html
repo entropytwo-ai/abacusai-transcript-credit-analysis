@@ -68,7 +68,7 @@
 <h2>Credits per day ({{ tz }})</h2>
 <div class="chart" role="img" aria-label="Credits per day">
   {% for d in daily %}
-  <div class="bar" title="{{ d.day }}: {{ d.credits | n0 }} credits"><span style="height: calc((100% - 54px) * {{ (d.credits / daily_max) if daily_max else 0 }})"></span><i>{{ d.day[5:] }}</i></div>
+  <div class="bar" title="{{ d.day }}: {{ d.credits | n0 }} credits"><b class="barval">{{ d.credits | kc }}</b><span style="height: calc((100% - 72px) * {{ (d.credits / daily_max) if daily_max else 0 }})"></span><i>{{ d.day[5:] }}</i></div>
   {% endfor %}
 </div>
 {% endif %}
