@@ -20,6 +20,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - PDF exports for the dashboard (`/export/summary.pdf`) and the dive-in view (`/export/dive.pdf`), with **Download PDF** / **Download dive PDF** buttons next to the CSV ones. Built with `fpdf2` (pure Python, no system libraries) so a fresh install keeps working.
 
 ### Changed
+- The **Active times per day** chart is now **clickable**: click (or focus and press Enter/Space on) any day column to **zoom into that single day** in a popup with a tall, readable hour axis, the day's dots spread out, and the full list of turn times. Step through days with the **‹ / ›** buttons or the arrow keys, and dismiss with the close button, a backdrop click, or `Esc`.
 - Larger axis labels on the **Credits per day** and **Active times per day** charts: the date labels on both and the hour labels on the activity chart are now bigger and easier to read.
 - Dates are now shown in a **display timezone** (default `America/New_York`) instead of UTC, including the **Last synced** time, with the timezone shown in the column headings (e.g. `EST`/`EDT`).
 - The dive-in moves **project totals to the top** of each project; the per-project header sticks while you scroll and is replaced by the next project's header.

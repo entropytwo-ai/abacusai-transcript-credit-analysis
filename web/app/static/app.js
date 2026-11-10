@@ -74,6 +74,83 @@
     });
   }
 
+  // "Active times per day": click a day column to zoom into that single day in a
+  // modal with a tall, readable hour axis and the full list of turn times.
+  var dayModal = document.getElementById("day-modal");
+  var actchart = document.querySelector(".actchart");
+  if (dayModal && actchart) {
+    var cols = Array.prototype.slice.call(actchart.querySelectorAll(".daycol.clickable"));
+    var plot = dayModal.querySelector(".daymodal-plot");
+    var titleEl = dayModal.querySelector(".daymodal-title");
+    var timesEl = dayModal.querySelector(".daymodal-times");
+    var tz = dayModal.getAttribute("data-tz") || "";
+    var cur = -1;
+
+    function dotsOf(col) {
+      return Array.prototype.slice.call(col.querySelectorAll(".dot")).map(function (s) {
+        return { frac: parseFloat(s.getAttribute("data-frac")) || 0, label: s.getAttribute("data-label") || "" };
+      }).sort(function (a, b) { return a.frac - b.frac; });
+    }
+
+    function renderDay(i) {
+      cur = i;
+      var col = cols[i];
+      var day = col.getAttribute("data-day");
+      var count = col.getAttribute("data-count");
+      var dots = dotsOf(col);
+      titleEl.textContent = day + " · " + count + " turn" + (count === "1" ? "" : "s") + (tz ? " (" + tz + ")" : "");
+
+      var html = '<div class="dmp-axis">';
+      for (var hr = 0; hr <= 24; hr += 2) {
+        var top = (hr / 24) * 100;
+        html += '<i class="dmp-h" style="top:' + top + '%">' + (hr < 10 ? "0" + hr : hr) + ':00</i>';
+        html += '<i class="dmp-gl" style="top:' + top + '%"></i>';
+      }
+      html += '</div><div class="dmp-dots">';
+      var n = dots.length;
+      for (var k = 0; k < n; k++) {
+        var topd = dots[k].frac * 100;
+        var left = n > 1 ? (k / (n - 1)) * 100 : 50;
+        html += '<span class="dmp-dot" style="top:' + topd + '%;left:' + left + '%" title="' + dots[k].label + '"></span>';
+      }
+      html += '</div>';
+      plot.innerHTML = html;
+
+      timesEl.innerHTML = dots.length
+        ? '<span class="dmt-label">Times:</span> ' + dots.map(function (d) { return '<span class="dmt">' + d.label + '</span>'; }).join("")
+        : "";
+
+      dayModal.querySelector("[data-prev]").disabled = (i <= 0);
+      dayModal.querySelector("[data-next]").disabled = (i >= cols.length - 1);
+    }
+
+    function openDay(i) {
+      renderDay(i);
+      dayModal.hidden = false;
+      document.body.classList.add("vmodal-open");
+    }
+    function closeDay() {
+      dayModal.hidden = true;
+      document.body.classList.remove("vmodal-open");
+    }
+
+    cols.forEach(function (col, i) {
+      col.addEventListener("click", function () { openDay(i); });
+      col.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDay(i); }
+      });
+    });
+    dayModal.querySelectorAll("[data-close]").forEach(function (el) { el.addEventListener("click", closeDay); });
+    dayModal.querySelector("[data-prev]").addEventListener("click", function () { if (cur > 0) renderDay(cur - 1); });
+    dayModal.querySelector("[data-next]").addEventListener("click", function () { if (cur < cols.length - 1) renderDay(cur + 1); });
+    document.addEventListener("keydown", function (e) {
+      if (dayModal.hidden) return;
+      if (e.key === "Escape") closeDay();
+      else if (e.key === "ArrowLeft" && cur > 0) renderDay(cur - 1);
+      else if (e.key === "ArrowRight" && cur < cols.length - 1) renderDay(cur + 1);
+    });
+  }
+
   var btn = document.getElementById("sync-now"), text = document.getElementById("sync-text");
   function poll() {
     fetch("/api/sync/status", { credentials: "same-origin" }).then(function (r) { return r.json(); }).then(function (s) {

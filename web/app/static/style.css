@@ -79,6 +79,30 @@ ul.note li { margin:.3rem 0; }
 .actchart .yaxis i.h { writing-mode:horizontal-tb; transform:translateY(-50%); bottom:auto; left:1px; height:auto; }
 .actchart .gridlines { position:absolute; top:.5rem; left:.5rem; right:.5rem; bottom:.5rem; pointer-events:none; z-index:0; }
 .actchart .gridlines i.gl { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--line); opacity:.55; }
+.actchart .daycol.clickable { cursor:pointer; }
+.actchart .daycol.clickable:hover, .actchart .daycol.clickable:focus-visible { background:rgba(57,255,122,.08); outline:none; }
+.actchart .daycol.clickable:focus-visible { box-shadow:inset 0 0 0 1px var(--hi); }
+
+/* Zoomed single-day view (opened from the activity chart) */
+.daymodal { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:4vmin; }
+.daymodal[hidden] { display:none; }
+.daymodal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.8); }
+.daymodal-box { position:relative; width:min(560px,96vw); background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.6); padding:.8rem 1rem 1rem; }
+.daymodal-head { display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem; }
+.daymodal-title { color:var(--hi); font-size:1.05rem; margin:0; flex:1; text-align:center; }
+.daymodal-nav, .daymodal-x { background:transparent; color:var(--fg); border:1px solid var(--line); border-radius:4px; font-size:1.2rem; line-height:1; cursor:pointer; padding:.1rem .5rem; }
+.daymodal-nav:hover:not([disabled]), .daymodal-x:hover { color:var(--hi); border-color:var(--hi); }
+.daymodal-nav[disabled] { opacity:.3; cursor:default; }
+.daymodal-x { font-size:1.4rem; }
+.daymodal-plot { position:relative; height:min(60vh,440px); margin-left:3.3rem; border-left:1px solid var(--line); }
+.daymodal-plot .dmp-axis { position:absolute; inset:0; pointer-events:none; }
+.daymodal-plot .dmp-h { position:absolute; left:-3.3rem; width:3rem; transform:translateY(-50%); font-style:normal; font-size:.72rem; color:var(--muted); text-align:right; }
+.daymodal-plot .dmp-gl { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--line); opacity:.5; }
+.daymodal-plot .dmp-dots { position:absolute; inset:0 .5rem; }
+.daymodal-plot .dmp-dot { position:absolute; width:9px; height:9px; margin:-4.5px 0 0 -4.5px; border-radius:50%; background:var(--hi); opacity:.8; box-shadow:0 0 4px rgba(57,255,122,.6); }
+.daymodal-times { margin-top:.7rem; font-size:.82rem; color:var(--muted); line-height:1.8; }
+.daymodal-times .dmt-label { color:var(--hi); }
+.daymodal-times .dmt { display:inline-block; background:#0a120a; border:1px solid var(--line); border-radius:3px; padding:0 .35rem; margin:0 .25rem .25rem 0; color:var(--fg); font-family:ui-monospace, Menlo, Consolas, monospace; }
 .costchart { border:1px solid var(--line); border-radius:6px; padding:.5rem; overflow-x:auto; }
 .costchart svg { width:100%; min-width:520px; height:auto; display:block; }
 .costchart .gl { stroke:var(--line); stroke-dasharray:4 4; opacity:.6; }

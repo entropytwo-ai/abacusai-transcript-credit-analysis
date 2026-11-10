@@ -14,11 +14,29 @@
     {% endfor %}
   </div>
   {% for d in activity %}
-  <div class="daycol" title="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }}">
-    {% for dot in d.dots %}<span class="dot" style="top: calc((100% - 54px) * {{ 1 - dot.frac }})" title="{{ d.day }} {{ dot.label }}"></span>{% endfor %}
+  <div class="daycol clickable" role="button" tabindex="0"
+       data-day="{{ d.day }}" data-count="{{ d.count }}"
+       aria-label="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }} — click to zoom in"
+       title="{{ d.day }}: {{ d.count }} turn{{ '' if d.count == 1 else 's' }} — click to zoom in">
+    {% for dot in d.dots %}<span class="dot" data-frac="{{ dot.frac }}" data-label="{{ dot.label }}" style="top: calc((100% - 54px) * {{ 1 - dot.frac }})" title="{{ d.day }} {{ dot.label }}"></span>{% endfor %}
     <i>{{ d.day[5:] }}</i>
   </div>
   {% endfor %}
 </div>
-<p class="note">Each dot is one turn, placed at the time of day you sent the prompt (times in {{ tz }}). Later in the day is higher.</p>
+<p class="note">Each dot is one turn, placed at the time of day you sent the prompt (times in {{ tz }}). Later in the day is higher. Click any day to zoom in.</p>
+
+{# Zoomed single-day view, opened by clicking a day column. Built client-side in app.js. #}
+<div id="day-modal" class="daymodal" data-tz="{{ tz }}" hidden>
+  <div class="daymodal-backdrop" data-close></div>
+  <div class="daymodal-box" role="dialog" aria-modal="true" aria-label="Active times for a single day">
+    <div class="daymodal-head">
+      <button type="button" class="daymodal-nav" data-prev aria-label="Previous day">&lsaquo;</button>
+      <h3 class="daymodal-title"></h3>
+      <button type="button" class="daymodal-nav" data-next aria-label="Next day">&rsaquo;</button>
+      <button type="button" class="daymodal-x" data-close aria-label="Close">&times;</button>
+    </div>
+    <div class="daymodal-plot"></div>
+    <div class="daymodal-times"></div>
+  </div>
+</div>
 {% endif %}
