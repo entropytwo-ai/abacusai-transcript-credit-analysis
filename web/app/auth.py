@@ -11,6 +11,8 @@ from . import db
 
 SESSION_COOKIE = "cdash_session"
 SESSION_MAX_AGE = 14 * 24 * 3600
+OAUTH_COOKIE = "cdash_oauth"
+OAUTH_MAX_AGE = 600  # 10 minutes to complete the Google round-trip
 _fails: dict = {}
 
 
@@ -35,6 +37,24 @@ def serializer() -> URLSafeTimedSerializer:
 
 def make_session(user_id: int) -> str:
     return serializer().dumps({"uid": user_id, "csrf": secrets.token_urlsafe(16)})
+
+
+def oauth_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(db.secret_file("session_secret"), salt="cdash-oauth")
+
+
+def make_oauth_state(data: dict) -> str:
+    """Sign the transient state + PKCE verifier + next URL for the Google round-trip."""
+    return oauth_serializer().dumps(data)
+
+
+def read_oauth_state(token: str):
+    if not token:
+        return None
+    try:
+        return oauth_serializer().loads(token, max_age=OAUTH_MAX_AGE)
+    except BadSignature:
+        return None
 
 
 def read_session(token: str):

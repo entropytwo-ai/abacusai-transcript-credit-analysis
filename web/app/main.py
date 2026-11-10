@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import secrets
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,9 +14,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, db, pdf, report, sync
+from . import auth, db, google_oauth, pdf, report, sync
 
-__version__ = "1.0.21"
+__version__ = "1.0.22"
 HERE = Path(__file__).resolve().parent
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -113,7 +114,9 @@ def check_csrf(user, token):
 
 
 def render(request, name, user=None, **ctx):
-    return templates.TemplateResponse(request, name, {"user": user, "version": __version__, **ctx})
+    return templates.TemplateResponse(
+        request, name,
+        {"user": user, "version": __version__, "google_enabled": google_oauth.enabled(), **ctx})
 
 
 def is_https(request: Request) -> bool:
@@ -155,6 +158,71 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
 def logout():
     resp = RedirectResponse("/login", status_code=303)
     resp.delete_cookie(auth.SESSION_COOKIE)
+    return resp
+
+
+def _safe_next(next: str) -> str:
+    return next if next.startswith("/") and not next.startswith("//") else "/"
+
+
+@app.get("/auth/google")
+def google_start(request: Request, next: str = "/", con=Depends(get_con)):
+    """Begin Google sign-in: redirect to Google with state + PKCE. The transient
+    state/verifier/next are kept in a short-lived signed, httponly cookie."""
+    if not google_oauth.enabled():
+        return render(request, "login.html", error="Google sign-in is not configured.", next=_safe_next(next))
+    verifier, challenge = google_oauth.pkce_pair()
+    state = secrets.token_urlsafe(24)
+    url = google_oauth.auth_url(state, challenge, google_oauth.redirect_uri(request))
+    resp = RedirectResponse(url, status_code=303)
+    resp.set_cookie(auth.OAUTH_COOKIE,
+                    auth.make_oauth_state({"state": state, "v": verifier, "next": _safe_next(next)}),
+                    max_age=auth.OAUTH_MAX_AGE, httponly=True, samesite="lax", secure=is_https(request))
+    return resp
+
+
+@app.get("/auth/google/callback")
+def google_callback(request: Request, code: str = "", state: str = "", error: str = "", con=Depends(get_con)):
+    """Finish Google sign-in: verify state, exchange the code (PKCE), check the email is
+    verified and allowlisted, then create the same session the password login creates."""
+    saved = auth.read_oauth_state(request.cookies.get(auth.OAUTH_COOKIE))
+
+    def back(msg):
+        r = render(request, "login.html", error=msg, next=_safe_next((saved or {}).get("next", "/")))
+        r.delete_cookie(auth.OAUTH_COOKIE)
+        return r
+
+    if error:
+        return back("Google sign-in was cancelled or failed.")
+    if not saved or not code or not state or state != saved.get("state"):
+        return back("Google sign-in session expired. Please try again.")
+    try:
+        redirect = google_oauth.redirect_uri(request)
+        tok = google_oauth.exchange_code(code, saved["v"], redirect)
+        info = google_oauth.fetch_userinfo(tok["access_token"])
+    except Exception:
+        logging.getLogger("oauth").warning("Google token/userinfo exchange failed", exc_info=True)
+        return back("Could not complete Google sign-in. Please try again.")
+
+    email = (info.get("email") or "").strip().lower()
+    verified = info.get("email_verified") in (True, "true", "True")
+    allow = google_oauth.allowed_emails()
+    # Fail closed: with no allowlist configured, admit nobody (the app shows private data).
+    if not allow or not email or not verified or email not in allow:
+        return back("This Google account is not authorized.")
+    # Link to an existing account: viewer usernames are their email. If none matches (e.g.
+    # the owner's app username is not an email), fall back to the single owner account —
+    # the allowlist above is the access gate.
+    row = con.execute("SELECT id FROM users WHERE username = ?", (email,)).fetchone()
+    if not row:
+        row = con.execute("SELECT id FROM users WHERE role = 'owner' ORDER BY id LIMIT 1").fetchone()
+    if not row:
+        return back("This Google account is not authorized.")
+
+    resp = RedirectResponse(_safe_next(saved.get("next", "/")), status_code=303)
+    resp.set_cookie(auth.SESSION_COOKIE, auth.make_session(row["id"]), max_age=auth.SESSION_MAX_AGE,
+                    httponly=True, samesite="lax", secure=is_https(request))
+    resp.delete_cookie(auth.OAUTH_COOKIE)
     return resp
 
 

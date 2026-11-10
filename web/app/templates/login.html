@@ -8,5 +8,9 @@
   <label>Username <input name="username" autocomplete="username" required autofocus></label>
   <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
   <button class="btn">Log in</button>
+  {% if google_enabled %}
+  <p class="muted small" style="margin:.9rem 0 .4rem">or</p>
+  <a class="btn" href="/auth/google?next={{ next | urlencode }}">Sign in with Google</a>
+  {% endif %}
 </form>
 {% endblock %}

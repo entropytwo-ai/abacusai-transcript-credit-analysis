@@ -216,3 +216,64 @@ def test_web_flow(fresh, monkeypatch):
     c.post("/admin/settings", data={"rate_usd_per_10k": "20", "tokens_per_word": "2", "brief_llm": "X",
                                     "sync_hour_utc": "3", "redact_terms": "a\nb", "csrf": csrf})
     assert "$20.00 per 10,000 credits" in c.get("/").text
+
+
+def test_google_button_hidden_when_unconfigured(fresh, monkeypatch):
+    # No Google env -> feature disabled, no button on the login page.
+    for k in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "ALLOWED_GOOGLE_EMAILS", "PUBLIC_BASE_URL"):
+        monkeypatch.delenv(k, raising=False)
+    from app import google_oauth
+    assert google_oauth.enabled() is False
+    login_client(fresh)  # create the owner so /login renders the form, not the setup notice
+    with TestClient(main.app) as c:
+        assert "Sign in with Google" not in c.get("/login").text
+
+
+def test_google_start_redirects_to_google(fresh, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "789443647456-test.apps.googleusercontent.com")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "GOCSPX-test-secret")
+    monkeypatch.setenv("ALLOWED_GOOGLE_EMAILS", "entropy.two@gmail.com")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://entropytwo-ai-project-analysis.abacusai.cloud")
+    from app import google_oauth
+    assert google_oauth.enabled() is True
+    login_client(fresh)  # create the owner so /login renders the form
+    with TestClient(main.app) as c:
+        # Button present on the login page.
+        assert "Sign in with Google" in c.get("/login").text
+        # Starting the flow 303-redirects to Google with the exact registered redirect_uri + PKCE/state.
+        r = c.get("/auth/google?next=/dive", follow_redirects=False)
+        assert r.status_code == 303
+        loc = r.headers["location"]
+        assert loc.startswith("https://accounts.google.com/o/oauth2/v2/auth?")
+        from urllib.parse import urlparse, parse_qs
+        q = parse_qs(urlparse(loc).query)
+        assert q["redirect_uri"] == ["https://entropytwo-ai-project-analysis.abacusai.cloud/auth/google/callback"]
+        assert q["client_id"] == ["789443647456-test.apps.googleusercontent.com"]
+        assert q["scope"] == ["openid email profile"]
+        assert q["response_type"] == ["code"]
+        assert q["code_challenge_method"] == ["S256"]
+        assert q.get("state") and q.get("code_challenge")
+        # A signed, httponly OAuth state cookie is set and carries the safe next.
+        assert auth.OAUTH_COOKIE in r.cookies
+        saved = auth.read_oauth_state(r.cookies[auth.OAUTH_COOKIE])
+        assert saved and saved["next"] == "/dive" and saved["state"] == q["state"][0]
+
+
+def test_google_callback_rejects_unlisted_email(fresh, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "cid")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "csec")
+    monkeypatch.setenv("ALLOWED_GOOGLE_EMAILS", "entropy.two@gmail.com")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://entropytwo-ai-project-analysis.abacusai.cloud")
+    from app import google_oauth
+    monkeypatch.setattr(google_oauth, "exchange_code", lambda *a, **k: {"access_token": "x"})
+    monkeypatch.setattr(google_oauth, "fetch_userinfo",
+                        lambda *a, **k: {"email": "intruder@example.com", "email_verified": True})
+    with TestClient(main.app) as c:
+        start = c.get("/auth/google", follow_redirects=False)
+        from urllib.parse import urlparse, parse_qs
+        state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+        c.cookies.set(auth.OAUTH_COOKIE, start.cookies[auth.OAUTH_COOKIE])
+        r = c.get(f"/auth/google/callback?code=abc&state={state}", follow_redirects=False)
+        assert r.status_code == 200  # rendered login page, not a session redirect
+        assert "This Google account is not authorized" in r.text
+        assert auth.SESSION_COOKIE not in r.cookies
