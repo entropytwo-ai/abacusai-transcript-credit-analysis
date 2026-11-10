@@ -102,14 +102,14 @@
 
       var html = '<div class="dmp-axis">';
       for (var hr = 0; hr <= 24; hr += 2) {
-        var top = (hr / 24) * 100;
+        var top = ((24 - hr) / 24) * 100;
         html += '<i class="dmp-h" style="top:' + top + '%">' + (hr < 10 ? "0" + hr : hr) + ':00</i>';
         html += '<i class="dmp-gl" style="top:' + top + '%"></i>';
       }
       html += '</div><div class="dmp-dots">';
       var n = dots.length;
       for (var k = 0; k < n; k++) {
-        var topd = dots[k].frac * 100;
+        var topd = (1 - dots[k].frac) * 100;
         var left = n > 1 ? (k / (n - 1)) * 100 : 50;
         html += '<span class="dmp-dot" style="top:' + topd + '%;left:' + left + '%" title="' + dots[k].label + '"></span>';
       }
